@@ -15,7 +15,7 @@ default_petsc_build_dir="${abs_builddir}/extern/petsc"
 default_petsc_branch="release"
 petsc_url="https://gitlab.com/petsc/petsc.git"
 default_slepc_build_dir="${abs_builddir}/extern/slepc"
-default_slepc_version="3.13.4"
+default_slepc_version="3.14.1"
 slepc_url_base="https://slepc.upv.es/download/distrib"
 warning_compiler_flags="-Wwrite-strings -Wno-strict-aliasing -Wno-unknown-pragmas"
 
@@ -49,11 +49,11 @@ AC_ARG_ENABLE([compilerwarnings],
 
 
 # Environmental variables
-AC_ARG_VAR(local_petsc_dir,[Override default local PETSc installation directory (${default_petsc_build_dir})])
-AC_ARG_VAR(local_slepc_dir,[Override default local SLEPc installation directory (${default_slepc_build_dir})])
-AC_ARG_VAR(local_petsc_arch_real,[Override automatic PETSc real architecture name (${default_petsc_arch_name_real} or ${default_petsc_arch_name_real}-debug)])
-AC_ARG_VAR(local_petsc_arch_complex,[Override automatic PETSc complex architecture name (${default_petsc_arch_name_complex} or ${default_petsc_arch_name_complex}-debug)])
-AC_ARG_VAR(local_slepc_version,[Override automatic (or outdated) SLEPc version number (${default_slepc_version})])
+AC_ARG_VAR(local_petsc_dir,[Override default local PETSc installation directory])
+AC_ARG_VAR(local_slepc_dir,[Override default local SLEPc installation directory])
+AC_ARG_VAR(local_petsc_arch_real,[Override automatic PETSc real architecture name])
+AC_ARG_VAR(local_petsc_arch_complex,[Override automatic PETSc complex architecture name])
+AC_ARG_VAR(local_slepc_version,Override automatic (or outdated) SLEPc version number)
 
 
 AC_CANONICAL_HOST
