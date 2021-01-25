@@ -181,6 +181,7 @@ NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 	atm_profile_2d->convert_property_units( "T", Units::fromString( "K" ) );
 	atm_profile_2d->convert_property_units( "P", Units::fromString( "Pa" ) );
 	atm_profile_2d->convert_property_units( "RHO", Units::fromString( "kg/m3" ) );
+	z_ground = atm_profile_2d->get( 0.0, "Z0" );
 
 	// calculate derived quantities
 	for (std::vector< NCPA::Atmosphere1D * >::iterator it = atm_profile_2d->first_profile();
