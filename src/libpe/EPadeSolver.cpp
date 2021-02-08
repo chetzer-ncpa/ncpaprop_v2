@@ -81,6 +81,13 @@ NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 		max_az 			= param->getFloat( "azimuth_end" );
 		step_az 		= param->getFloat( "azimuth_step" );
 		NAz 			= (int) ((max_az - min_az)/step_az) + 1;
+
+		// initialize output file
+		std::cout << "Initializing file " << NCPAPROP_EPADE_PE_FILENAME_MULTIPROP << std::endl;
+		std::ofstream truncator( NCPAPROP_EPADE_PE_FILENAME_MULTIPROP, 
+			std::ofstream::out | std::ofstream::trunc );
+		truncator.close();
+
 	} else {
 		NAz 			= 1;
 		min_az 			= param->getFloat( "azimuth" );
