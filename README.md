@@ -1,5 +1,7 @@
 # ncpaprop
 
+[![DOI](https://zenodo.org/badge/292898949.svg)](https://zenodo.org/badge/latestdoi/292898949)
+
 # Installation
 
 1. Run ./configure with appropriate parameters.  Examples:
