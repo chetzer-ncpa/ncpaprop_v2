@@ -39,7 +39,8 @@ namespace NCPA {
 		void fill_atm_vector_absolute( NCPA::Atmosphere2D *atm, double range, int NZvec, double *zvec, 
 			std::string key, double fill_value, double *vec );
 
-		int make_q_powers( int NZvec, double *zvec, double k0, double h2, std::complex<double> ground_impedence, 
+		int make_q_powers( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, double r, double k0, 
+			double *k, double h2, double ground_height, std::complex<double> ground_impedence, 
 			std::complex<double> *n, size_t nqp, int boundary_index, Mat *qpowers );
 		int make_B_and_C_matrices( Mat *qpowers, int npade, int NZ, 
 			std::vector< std::complex< double > > &P, std::vector< std::complex< double > > &Q,

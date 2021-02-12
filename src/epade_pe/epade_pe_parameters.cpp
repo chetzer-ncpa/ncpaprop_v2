@@ -167,8 +167,8 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 	ps->addParameterDescription( "Flags", "--write_atm_profile", "Output atmospheric profile to atm_profile.pe" );
 	ps->addParameter( new NCPA::FlagParameter( "lossless" ) );
 	ps->addParameterDescription( "Flags", "--lossless", "Ignore atmospheric attenuation" );
-	//ps->addParameter( new NCPA::FlagParameter( "topo" ) );
-	//ps->addParameterDescription( "Flags", "--topo", "Use topography.  Requires presence of 'Z0' parameter in atmospheric files" );
+	ps->addParameter( new NCPA::FlagParameter( "topo" ) );
+	ps->addParameterDescription( "Flags", "--topo", "Use topography.  Requires presence of 'Z0' parameter in atmospheric files" );
 	ps->addParameter( new NCPA::FlagParameter( "disable_top_layer" ) );
 	ps->addParameter( new NCPA::FlagParameter( "broadband" ) );
 	//ps->addParameterDescription( "Flags", "--broadband", "Calculate at multiple frequencies" );

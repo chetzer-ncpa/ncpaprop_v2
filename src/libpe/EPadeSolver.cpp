@@ -29,6 +29,8 @@
 #define PI 3.14159
 #endif
 
+#define RHO_B 3011.0
+
 
 NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 
@@ -36,7 +38,6 @@ NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 
 	// obtain the parameter values from the user's options
 	// @todo add units to input scalar quantities
-	//gnd_imp_model 		= param->getString( "ground_impedence_model" );
 	r_max	 			= param->getFloat( "maxrange_km" ) * 1000.0;
   	z_max	 			= param->getFloat( "maxheight_km" ) * 1000.0;      // @todo fix elsewhere that m is required
   	zs			 		= param->getFloat( "sourceheight_km" ) * 1000.0;
@@ -53,11 +54,9 @@ NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 	use_atm_2d			= param->wasFound( "atmosfile2d" );
 	//use_atm_toy			= param->wasFound( "toy" );
 	top_layer			= !(param->wasFound( "disable_top_layer" ));
-	//use_topo			= param->wasFound( "topo" );
-	use_topo 			= false;
+	use_topo			= param->wasFound( "topo" );
 	write2d 			= param->wasFound( "write_2d_tloss" );
 	multiprop 			= param->wasFound( "multiprop" );
-	//broadband 			= param->wasFound( "broadband" );
 	broadband = false;
 	user_ground_impedence 	= std::complex<double>( 0.0, 0.0 );
 
@@ -99,23 +98,6 @@ NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 	for (int i = 0; i < NAz; i++) {
 		azi[ i ] = min_az + i * step_az;
 	}
-
-	/* @todo Move this inside freq loop in solve() */
-	// double dr;
- //  	if (NR == 0) {
- //  		dr = 340.0 / freq;
-	// 	NR = (int)ceil( r_max / dr );
- //  	} else {
- //  		dr = r_max / NR;
- //  	}
- //  	r = new double[ NR ];
- //  	std::memset( r, 0, NR * sizeof(double) );
- //  	zgi_r = new int[ NR ];
- //  	std::memset( zgi_r, 0, NR * sizeof( int ) );
- //  	int i;
- //  	for (i = 0; i < NR; i++) {
- //  		r[ i ] = ((double)(i+1)) * dr;
- //  	}
 
   	if (broadband) {
   		if (write2d) {
@@ -210,8 +192,6 @@ NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 	atm_profile_2d->calculate_wind_direction( "_WD_", "U", "V" );
 	if ( attnfile.size() > 0 ) {
 		atm_profile_2d->read_attenuation_from_file( "_ALPHA_", param->getString( "attnfile" ) );
-	// } else {
-	// 	atm_profile_2d->calculate_attenuation( "_ALPHA_", "T", "P", "RHO", freq );
 	}
 
 	// calculate/check z resolution
@@ -233,7 +213,6 @@ NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 
   	// calculate ground impedence
   	if (param->wasFound( "ground_impedence_real" ) || param->wasFound( "ground_impedence_imag" ) ) {
-  		//std::complex<double> I( 0.0, 1.0 );
   		user_ground_impedence.real( param->getFloat( "ground_impedence_real" ) );
   		user_ground_impedence.imag( param->getFloat( "ground_impedence_imag" ) );
   		user_ground_impedence_found = true;
@@ -241,12 +220,9 @@ NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 }
 
 NCPA::EPadeSolver::~EPadeSolver() {
-	// delete [] r;
 	delete [] z;
 	delete [] z_abs;
-	// delete [] zgi_r;
 	delete [] azi;
-	// NCPA::free_cmatrix( tl, NZ, NR-1 );
 	delete atm_profile_2d;
 }
 
@@ -302,13 +278,12 @@ int NCPA::EPadeSolver::solve() {
 			indices[ i ] = i;
 		}
 		zs = NCPA::max( zs, z_ground );
+
+		// define ground_index, which is J in @notes
 		ground_index = NCPA::find_closest_index( z, NZ, z_ground );
 		if ( z[ ground_index ] < z_ground ) {
 			ground_index++;
 		}
-		// if (z[ ground_index ] > z_ground && ground_index > 0) {
-		// 	ground_index--;
-		// }
 
 	} else {
 		atm_profile_2d->get_minimum_altitude_limits( minlimit, z_min );
@@ -337,25 +312,11 @@ int NCPA::EPadeSolver::solve() {
 		}
 		zs = NCPA::max( zs-z_ground+dz, dz );
 	}
-	// tl = NCPA::cmatrix( NZ, NR-1 );
 	
-	/*
-	int plotz = 10;
-	for (i = ((int)fmod((double)ground_index,(double)plotz)); i < NZ; i += plotz) {
-		zt.push_back( z_abs[ i ] );
-		zti.push_back( i );
-	}
-	nzplot = zt.size();
-	*/
-
 	// constants for now
-	//double omega = 2.0 * PI * freq;
-	//double dr = r[1] - r[0];
-	//double h = z[1] - z[0];
 	double h = dz;
 	double h2 = h * h;
 	double dr;
-	//ground_impedence = std::complex<double>( 1.0 / h2, 0.0 );
 
 	// set up for source atmosphere
 	double k0 = 0.0, c0 = 0.0;
@@ -384,10 +345,13 @@ int NCPA::EPadeSolver::solve() {
 		for (int freqind = 0; freqind < NF; freqind++) {
 
 			freq = f[ freqind ];
+
+			// calculate attenuation as a function of frequency if not externally supplied
 			if (attnfile.length() == 0) {
 				atm_profile_2d->calculate_attenuation( "_ALPHA_", "T", "P", "RHO", freq );
 			}
 
+			// Set up range vector
 			if (NR_requested == 0) {
 		  		dr = 340.0 / freq;
 				NR = (int)ceil( r_max / dr );
@@ -402,7 +366,9 @@ int NCPA::EPadeSolver::solve() {
 		  	int i;
 		  	for (i = 0; i < NR; i++) {
 		  		r[ i ] = ((double)(i+1)) * dr;
-		  	}		
+		  	}
+
+		  	// set up transmission loss matrix
 			tl = NCPA::cmatrix( NZ, NR-1 );
 
 			// calculate ground impedence (script A in notes in eq. 12)
@@ -427,13 +393,14 @@ int NCPA::EPadeSolver::solve() {
 
 			// calculate q matrices
 			qpowers = new Mat[ npade+1 ];
-			//qpowers_starter = new Mat[ npade+1 ];
-			make_q_powers( NZ, z, k0, h2, ground_impedence_factor, n, npade+1, 0, qpowers );
+			make_q_powers( atm_profile_2d, NZ, z, 0.0, k, k0, h2, z_ground, ground_impedence_factor, 
+				n, npade+1, ground_index, qpowers );
 
 
 			if (starter == "self") {
 				qpowers_starter = new Mat[ npade+1 ];
-				make_q_powers( NZ, z, k0, h2, ground_impedence_factor, n, npade+1, ground_index, qpowers_starter );
+				make_q_powers( atm_profile_2d, NZ, z, 0.0, k, k0, h2, z_ground, 
+					ground_impedence_factor, n, npade+1, ground_index, qpowers_starter );
 				get_starter_self( NZ, z, zs, k0, qpowers_starter, npade, &psi_o );
 			} else if (starter == "gaussian") {
 				qpowers_starter = qpowers;
@@ -462,12 +429,14 @@ int NCPA::EPadeSolver::solve() {
 				if (((int)(atm_profile_2d->get_profile_index( rr ))) != profile_index) {
 				
 					profile_index = atm_profile_2d->get_profile_index( rr );
-					calculate_atmosphere_parameters( atm_profile_2d, NZ, z, rr, z_ground, lossless, top_layer, freq, 
-						use_topo, k0, c0, c, a_t, k, n );
+					calculate_atmosphere_parameters( atm_profile_2d, NZ, z, rr, z_ground, lossless, 
+						top_layer, freq, use_topo, k0, c0, c, a_t, k, n );
 					for (i = 0; i < npade+1; i++) {
 						ierr = MatDestroy( qpowers + i );CHKERRQ(ierr);
 					}
-					make_q_powers( NZ, z, k0, h2, ground_impedence_factor, n, npade+1, 0, qpowers );
+					// @todo recalculate z_ground for the new r when we do undulating ground
+					make_q_powers( atm_profile_2d, NZ, z, rr, k, k0, h2, z_ground, 
+						ground_impedence_factor, n, npade+1, ground_index, qpowers );
 					epade( npade, k0, dr, &P, &Q );
 					ierr = MatZeroEntries( B );CHKERRQ(ierr);
 					ierr = MatZeroEntries( C );CHKERRQ(ierr);
@@ -569,6 +538,7 @@ int NCPA::EPadeSolver::solve() {
 	return 1;
 }
 
+// Calculate and return k0, c0, c, a, k, and n
 void NCPA::EPadeSolver::calculate_atmosphere_parameters( NCPA::Atmosphere2D *atm, int NZvec, double *z_vec, 
 	double r, double z_g, bool use_lossless, bool use_top_layer, double freq, bool absolute, 
 	double &k0, double &c0, double *c_vec, double *a_vec, std::complex<double> *k_vec, 
@@ -584,12 +554,8 @@ void NCPA::EPadeSolver::calculate_atmosphere_parameters( NCPA::Atmosphere2D *atm
 	// z_vec is relative to ground
 	if (absolute) {
 		fill_atm_vector_absolute( atm, r, NZvec, z_vec, "_CEFF_", c_underground, c_vec );
-		//int zeroind = find_closest_index( z_vec, NZvec, 0.0 );
-		//c0 = NCPA::mean( c_vec+zeroind, NZvec-zeroind );
 	} else {
 		fill_atm_vector_relative( atm, r, NZvec, z_vec, "_CEFF_", z_g, c_vec );
-		//c0 = NCPA::mean( c_vec, NZvec );
-		//c0 = c_vec[ 0 ];
 	}
 	c0 = atm->get( r, "_CEFF_", z_g );
 
@@ -609,17 +575,12 @@ void NCPA::EPadeSolver::calculate_atmosphere_parameters( NCPA::Atmosphere2D *atm
 	k0 = 2.0 * PI * freq / c0;
 	
 	// Set up vectors
-	//indices = new PetscInt[ NZ ];
-	for (int i = 0; i < NZ; i++) {
-		// if (absolute) {
-		// 	if (z_vec[i] < z_g) {
-		// 		k_vec[ i ] = 0.0;
-		// 	} else {
-		// 		k_vec[ i ] = 2.0 * PI * freq / c_vec[ i ] + (a_vec[ i ] + abslayer[ i ]) * I;
-		// 	}
-		// } else {
+	for (int i = 0; i < NZvec; i++) {
+		if (z_vec[i] < z_g) {
+			k_vec[ i ] = 0.0;
+		} else {
 			k_vec[ i ] = 2.0 * PI * freq / c_vec[ i ] + (a_vec[ i ] + abslayer[ i ]) * I;
-		// }
+		}
 		n_vec[ i ] = k_vec[ i ] / k0;
 	}
 }
@@ -691,7 +652,8 @@ int NCPA::EPadeSolver::make_B_and_C_matrices( Mat *qpowers, int npade, int NZ,
 	return 1;
 }
 
-int NCPA::EPadeSolver::make_q_powers( int NZvec, double *zvec, double k0, double h2, 
+int NCPA::EPadeSolver::make_q_powers( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, 
+	double r, double k0, double *k, double h2, double z_s,
 	std::complex<double> impedence_factor, std::complex<double> *n, size_t nqp, 
 	int boundary_index, Mat *qpowers ) {
 
@@ -701,6 +663,30 @@ int NCPA::EPadeSolver::make_q_powers( int NZvec, double *zvec, double k0, double
 	PetscErrorCode ierr;
 	PetscScalar value[3];
 	PetscInt i;
+
+	// Calculate parameters
+	double h = std::sqrt( h2 );
+	double J_s = z_s / h;
+	int J = NCPA::find_closest_index( zvec, NZvec, z_s );  // first index above ground
+	if ( zvec[ J ] < z_s ) {
+		J++;
+	}
+	double dJ = (double)J;
+
+	// calculate intermediate variables as shown in notes
+	double rho_a = atm->get( r, "RHO", z_s );
+	double Gamma = 0.5 * atm->get_first_derivative( r, "RHO", z_s ) / rho_a;
+	double Anom = (1.0 / std::sqrt( RHO_B )) * (1.0 / (J_s - dJ + 1.0) );
+	double Bnom = (1.0 / std::sqrt( rho_a )) * (1.0 / (dJ - J_s) );
+	double denom = Anom + Bnom - (h * Gamma);
+	double s_A = Anom / denom;
+	double s_B = Bnom / denom;
+	double a = 1.0 / (dJ - J_s);
+	double b = (-2.0 + s_A) / (dJ - J_s);
+	double c = s_B / (dJ - J_s);
+	double alpha = s_A / (J_s - dJ + 1.0);
+	double beta  = (-2.0 + s_B) / (J_s - dJ + 1.0);
+	double gamma = 1.0 / (J_s - dJ + 1.0);
 
 	// Set up matrices
 	ierr = MatCreateSeqAIJ( PETSC_COMM_SELF, NZvec, NZvec, 3, NULL, &q );CHKERRQ(ierr);
@@ -712,12 +698,57 @@ int NCPA::EPadeSolver::make_q_powers( int NZvec, double *zvec, double k0, double
 	std::complex<double> bnd_cnd = (impedence_factor * std::sqrt( h2 ) - 1.0) / h2;
 	double k02 = k0*k0;
 	
+	// If this process is being split over processors, we need to check to see
+	// if this particular instance contains the first or last rows, because those
+	// get filled differently
 	ierr = MatGetOwnershipRange(q,&Istart,&Iend);CHKERRQ(ierr);
-	if (Istart==0) FirstBlock=PETSC_TRUE;
-    if (Iend==NZ) LastBlock=PETSC_TRUE;
-    value[0]=1.0 / h2 / k02; value[2]=1.0 / h2 / k02;
+
+	// Does this instance contain the first row?
+	if (Istart == 0) {
+		FirstBlock=PETSC_TRUE;
+	}
+
+	// Does this instance contain the last row?
+    if (Iend==NZ) {
+    	LastBlock=PETSC_TRUE;
+    }
+
+    //value[0]=1.0 / h2 / k02; value[2]=1.0 / h2 / k02;
+    // iterate over block.  If this instance contains the first row, leave that one
+    // for later, same for if this instance contains the last row.
+    double Drow[ 3 ];
+    memset( Drow, 0, 3*sizeof(double) );
     for( i=(FirstBlock? Istart+1: Istart); i<(LastBlock? Iend-1: Iend); i++ ) {
-    		if (i < boundary_index)  {
+
+		// set column numbers.  Since the matrix Q is tridiagonal (because input 
+		// matrix D is tridiagonal and K is diagonal), column indices are
+		// i-1, i, i+1
+    	col[ 0 ] = i-1;
+    	col[ 1 ] = i;
+    	col[ 2 ] = i+1;
+
+    	// Set values.  This will be the same unless we're at the indices immediately
+    	// below or above the ground surface
+    	if (i == (boundary_index-1)) {
+    		// this is the alpha, beta, gamma row
+    		Drow[0] = alpha;
+    		Drow[1] = beta;
+    		Drow[2] = gamma;
+    	} else if (i == boundary_index) {
+    		// this is the a, b, c row
+    		Drow[0] = a;
+    		Drow[1] = b;
+    		Drow[2] = c;
+    	} else {
+    		Drow[0] = 1.0;
+    		Drow[1] = -2.0;
+    		Drow[2] = 1.0;
+    	}
+    	value[ 0 ] = Drow[0] / h2 / k02;
+    	value[ 1 ] = ( (Drow[1] / h2) + k[ i ]*k[ i ] - k02 ) / k02;
+    	value[ 2 ] = Drow[2] / h2 / k02;
+    		/*
+    		if (i < boundary_index)  { 
     			value[ 0 ] = 0.0;
     			value[ 1 ] = 0.0;  
     			value[ 2 ] = 0.0;
@@ -730,8 +761,9 @@ int NCPA::EPadeSolver::make_q_powers( int NZvec, double *zvec, double k0, double
     			value[ 1 ] = -2.0/h2/k02 + (n[i]*n[i] - 1);
     			value[ 2 ] = 1.0 / h2 / k02;
     		}
-		    col[0]=i-1; col[1]=i; col[2]=i+1;
-		    ierr = MatSetValues(q,1,&i,3,col,value,INSERT_VALUES);CHKERRQ(ierr);
+    		*/
+		    //col[0]=i-1; col[1]=i; col[2]=i+1;
+		ierr = MatSetValues(q,1,&i,3,col,value,INSERT_VALUES);CHKERRQ(ierr);
     }
     if (LastBlock) {
 		    i=NZ-1; col[0]=NZ-2; col[1]=NZ-1;
@@ -741,13 +773,25 @@ int NCPA::EPadeSolver::make_q_powers( int NZvec, double *zvec, double k0, double
     }
     if (FirstBlock) {
 		    i=0; col[0]=0; col[1]=1; 
-		    if (i < boundary_index)  {
-    			value[ 0 ] = 0.0;
-    			value[ 1 ] = 0.0;
+		    if (i == (boundary_index-1))  {
+		    	Drow[0] = alpha;
+	    		Drow[1] = beta;
+	    		Drow[2] = gamma;
+    			// value[ 0 ] = 0.0;
+    			// value[ 1 ] = 0.0;
+    		} else if (i == boundary_index) {
+    			Drow[0] = a;
+	    		Drow[1] = b;
+	    		Drow[2] = c;
+    			// value[ 0 ] = bnd_cnd/k02 + (n[i]*n[i] - 1);
+    			// value[ 1 ] = 1.0 / h2 / k02;
     		} else {
-    			value[ 0 ] = bnd_cnd/k02 + (n[i]*n[i] - 1);
-    			value[ 1 ] = 1.0 / h2 / k02;
+    			Drow[0] = 1.0;
+	    		Drow[1] = -2.0;
+	    		Drow[2] = 1.0;
     		}
+    		value[ 0 ] = ( (Drow[1] / h2) + k[ i ]*k[ i ] - k02 ) / k02;
+    		value[ 1 ] = Drow[2] / h2 / k02;
 		    //value[0]=bnd_cnd/k02 + (n[i]*n[i] - 1); 
 		    //value[1]=1.0 / h2 / k02;
 		    ierr = MatSetValues(q,1,&i,2,col,value,INSERT_VALUES);CHKERRQ(ierr);
