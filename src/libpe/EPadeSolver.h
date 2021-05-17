@@ -28,23 +28,48 @@ namespace NCPA {
 
 	protected:
 
+		// functions to perform the various intermediate calculations
 		int epade( int order, double k0, double dr, std::vector<PetscScalar> *P, std::vector<PetscScalar> *Q,
 			bool starter = false );
+		int calculate_pade_coefficients( std::vector<PetscScalar> *c, 
+			int n_numerator, int n_denominator, std::vector<PetscScalar> *numerator_coefficients,
+			std::vector<PetscScalar> *denominator_coefficients );
+		int make_q_powers( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, double r, 
+			std::complex<double> *k, 
+			double k0, double h2, double ground_height, std::complex<double> ground_impedence, 
+			std::complex<double> *n, size_t nqp, int boundary_index, double zg_prime, Mat &last_q const, Mat *qpowers );
+		int generate_polymatrices( Mat *qpowers, int npade, int NZ, 
+			std::vector< std::complex< double > > &P, std::vector< std::complex< double > > &Q,
+			Mat *B, Mat *C );
+		int create_polymatrix_vector( size_t nterms, Mat *Q, Mat **qpowers );
+		int delete_polymatrix_vector( size_t nterms, Mat **qpowers );
+		int build_operator_matrix( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, 
+			double r, std::complex<double> *k, double k0, double h2, double z_s,
+			std::complex<double> impedence_factor, std::complex<double> *n, 
+			int boundary_index, Mat &last_q const, Mat *q );
+
+		// functions for recurrence relations of various Taylor series
+		std::vector<PetscScalar> taylor_exp_id_sqrt_1pQ_m1( int N, double delta );
+		std::vector<PetscScalar> taylor_1pQ_n025( int N );
+		std::vector<PetscScalar> taylor_1pQ_025( int N );
+		std::vector<PetscScalar> taylor_1pQpid_n025( int N, double delta );
+
+		// approximation functions
+		int approximate_sqrt_1pQ( int NZvec, Mat *Q, Mat *approx );
+
+		// functions to calculate the various starter fields
 		int get_starter_gaussian( size_t NZ, double *z, double zs, double k0, int ground_index, Vec *psi );
-		int get_starter_self( size_t NZ, double *z, double zs, double k0, Mat *qpowers, size_t npade, 
-			Vec *psi );
+		int get_starter_self( size_t NZ, double *z, double z_source, double z_ground, double k0, 
+			Mat *qpowers, size_t npade, Vec *psi );
+		int get_starter_self_revised( size_t NZ, double *z, double z_source, double z_ground, double k0, 
+			Mat *qpowers, size_t npade, Vec *psi );
+
+		// functions to calculate atmospheric parameters
 		void absorption_layer( double lambda, double *z, int NZ, double *layer );
 		void fill_atm_vector_relative( NCPA::Atmosphere2D *atm, double range, int NZvec, double *zvec, 
 			std::string key, double groundheight, double *vec );
 		void fill_atm_vector_absolute( NCPA::Atmosphere2D *atm, double range, int NZvec, double *zvec, 
 			std::string key, double fill_value, double *vec );
-
-		int make_q_powers( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, double r, double k0, 
-			double *k, double h2, double ground_height, std::complex<double> ground_impedence, 
-			std::complex<double> *n, size_t nqp, int boundary_index, Mat *qpowers );
-		int make_B_and_C_matrices( Mat *qpowers, int npade, int NZ, 
-			std::vector< std::complex< double > > &P, std::vector< std::complex< double > > &Q,
-			Mat *B, Mat *C );
 		void calculate_atmosphere_parameters( NCPA::Atmosphere2D *atm, int NZvec, double *z_vec, 
 			double r, double z_g, bool use_lossless, bool use_top_layer, double freq, bool use_absolute_z,
 			double &k0, double &c0, double *c_vec, double *a_vec, std::complex<double> *k_vec, 

@@ -237,6 +237,24 @@ double NCPA::normalizeAzimuth( double in ) {
 	return out;
 }
 
+int** NCPA::imatrix( long nr, long nc ) {
+	// allocate an int matrix
+	int **v;
+	v = new int* [nr];
+	for (long i = 0; i < nr; i++) {
+		v[ i ] = new int[ nc ];
+	}
+	return v;
+}
+
+int NCPA::free_imatrix( double **v, long nr, long nc ) {
+	for (long i = 0; i < nr; i++) {
+		delete [] v[ i ];
+	}
+	delete [] v;
+	return 0;
+}
+
 // Following functions came from various <module>_lib files
 double** NCPA::dmatrix(long nr, long nc) {
   // allocate a double matrix
@@ -252,9 +270,9 @@ double** NCPA::dmatrix(long nr, long nc) {
 int NCPA::free_dmatrix(double **v, long nr, long nc) {
   // free a double matrix
   for (long i=0; i<nr; i++) {
-      delete v[i];
+      delete [] v[i];
   }
-  delete v;
+  delete [] v;
   return 0;
 }
 
@@ -271,9 +289,9 @@ std::complex<double> **NCPA::cmatrix(long nr, long nc) {
 int NCPA::free_cmatrix( std::complex<double> **v, long nr, long nc) {
   // free a complex<double> matrix
   for (long i=0; i<nr; i++) {
-      delete v[i];
+      delete [] v[i];
   }
-  delete v;
+  delete [] v;
   return 0;
 }
 
