@@ -20,6 +20,8 @@ namespace NCPA {
 		void set_insert_range_units( units_t u );
 		void sort_profiles();
 		void convert_range_units( NCPA::units_t new_units );
+		void set_maximum_valid_range( double maxrange );
+		double get_maximum_valid_range() const;
 
 		// profile manipulation
 		void add_property( std::string key, size_t n_points, double *quantity_points, 
@@ -104,6 +106,8 @@ namespace NCPA {
 		double *topo_ranges_;
 		gsl_interp_accel *topo_accel_;
 		gsl_spline *topo_spline_;
+
+		double max_valid_range_;
 
 	};
 

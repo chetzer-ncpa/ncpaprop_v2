@@ -28,25 +28,33 @@ namespace NCPA {
 
 	protected:
 
+		// solve using the appropriate method
+		int solve_with_topography();
+		int solve_without_topography();
+
 		// functions to perform the various intermediate calculations
-		int epade( int order, double k0, double dr, std::vector<PetscScalar> *P, std::vector<PetscScalar> *Q,
-			bool starter = false );
+		// int epade( int order, double k0, double dr, std::vector<PetscScalar> *P, std::vector<PetscScalar> *Q,
+		// 	bool starter = false );
 		int calculate_pade_coefficients( std::vector<PetscScalar> *c, 
 			int n_numerator, int n_denominator, std::vector<PetscScalar> *numerator_coefficients,
 			std::vector<PetscScalar> *denominator_coefficients );
 		int make_q_powers( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, double r, 
 			std::complex<double> *k, 
 			double k0, double h2, double ground_height, std::complex<double> ground_impedence, 
-			std::complex<double> *n, size_t nqp, int boundary_index, double zg_prime, Mat &last_q const, Mat *qpowers );
+			std::complex<double> *n, size_t nqp, int boundary_index, const Mat &last_q, Mat *qpowers );
 		int generate_polymatrices( Mat *qpowers, int npade, int NZ, 
 			std::vector< std::complex< double > > &P, std::vector< std::complex< double > > &Q,
 			Mat *B, Mat *C );
-		int create_polymatrix_vector( size_t nterms, Mat *Q, Mat **qpowers );
+		int create_polymatrix_vector( size_t nterms, const Mat *Q, Mat **qpowers );
 		int delete_polymatrix_vector( size_t nterms, Mat **qpowers );
-		int build_operator_matrix( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, 
+		int build_operator_matrix_with_topography( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, 
 			double r, std::complex<double> *k, double k0, double h2, double z_s,
 			std::complex<double> impedence_factor, std::complex<double> *n, 
-			int boundary_index, Mat &last_q const, Mat *q );
+			int boundary_index, const Mat &last_q, Mat *q );
+		int build_operator_matrix_without_topography( 
+			int NZvec, double *zvec, double k0, double h2, 
+			std::complex<double> impedence_factor, std::complex<double> *n, size_t nqp, 
+			int boundary_index, Mat *q );
 
 		// functions for recurrence relations of various Taylor series
 		std::vector<PetscScalar> taylor_exp_id_sqrt_1pQ_m1( int N, double delta );
@@ -55,12 +63,12 @@ namespace NCPA {
 		std::vector<PetscScalar> taylor_1pQpid_n025( int N, double delta );
 
 		// approximation functions
-		int approximate_sqrt_1pQ( int NZvec, Mat *Q, Mat *approx );
+		int approximate_sqrt_1pQ( int NZvec, const Mat *Q, PetscInt Ji, Vec *vecBelow, Vec *vecAbove, PetscInt *nonzeros );
 
 		// functions to calculate the various starter fields
 		int get_starter_gaussian( size_t NZ, double *z, double zs, double k0, int ground_index, Vec *psi );
-		int get_starter_self( size_t NZ, double *z, double z_source, double z_ground, double k0, 
-			Mat *qpowers, size_t npade, Vec *psi );
+		// int get_starter_self( size_t NZ, double *z, double z_source, double z_ground, double k0, 
+		// 	Mat *qpowers, size_t npade, Vec *psi );
 		int get_starter_self_revised( size_t NZ, double *z, double z_source, double z_ground, double k0, 
 			Mat *qpowers, size_t npade, Vec *psi );
 

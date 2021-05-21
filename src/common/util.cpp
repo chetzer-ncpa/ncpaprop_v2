@@ -247,7 +247,7 @@ int** NCPA::imatrix( long nr, long nc ) {
 	return v;
 }
 
-int NCPA::free_imatrix( double **v, long nr, long nc ) {
+int NCPA::free_imatrix( int **v, long nr, long nc ) {
 	for (long i = 0; i < nr; i++) {
 		delete [] v[ i ];
 	}

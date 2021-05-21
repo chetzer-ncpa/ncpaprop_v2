@@ -17,7 +17,8 @@ NCPA::Atmosphere2D::Atmosphere2D() {
 	midpoints_.clear();
 	clear_last_index_();
 	range_units_ = NCPA::UNITS_NONE;
-
+	max_valid_range_ = 0;
+	
 	topo_ground_heights_ = NULL;
 	topo_ranges_ = NULL;
 	topo_accel_ = NULL;
@@ -32,6 +33,20 @@ NCPA::Atmosphere2D::~Atmosphere2D() {
 	}
 	profiles_.clear();
 	midpoints_.clear();
+}
+
+void NCPA::Atmosphere2D::set_maximum_valid_range( double maxrange ) {
+	if (range_units_ == NCPA::UNITS_NONE) {
+		throw std::runtime_error( "Range units have not been specified!" );
+	}
+
+	max_valid_range_ = maxrange;
+
+	std::cout << "Setting maximum range to " << maxrange << " " << NCPA::Units::toString( range_units_ ) << std::endl;
+}
+
+double NCPA::Atmosphere2D::get_maximum_valid_range() const {
+	return max_valid_range_;
 }
 
 bool NCPA::sort_profiles_by_range_( Atmosphere1D *p1, Atmosphere1D *p2 ) {
@@ -50,6 +65,10 @@ void NCPA::Atmosphere2D::insert_profile( const NCPA::Atmosphere1D *profile, doub
 	profiles_.push_back( newProfile );
 	sorted_ = false;
 	clear_last_index_();
+
+	if (range > max_valid_range_) {
+		set_maximum_valid_range( range );
+	}
 
 	// clear ground elevation spline
 	free_ground_elevation_spline_();
@@ -305,7 +324,10 @@ void NCPA::Atmosphere2D::convert_property_units( std::string key, NCPA::units_t 
 }
 
 void NCPA::Atmosphere2D::convert_range_units( NCPA::units_t new_units ) {
+	NCPA::units_t old_units = range_units_;
 	this->convert_property_units( "_RANGE_", new_units );
+	max_valid_range_ = NCPA::Units::convert( max_valid_range_, old_units, new_units );
+	range_units_ = new_units;
 	sorted_ = false;
 	clear_last_index_();
 	calculate_midpoints_();
@@ -399,14 +421,14 @@ void NCPA::Atmosphere2D::generate_ground_elevation_spline_() {
 
 	std::vector< NCPA::Atmosphere1D * >::iterator it = this->first_profile();
 	topo_ground_heights_[ 0 ] = (*it)->get( "Z0" );
-	topo_ranges_[ 0 ] = 0.0;
+	topo_ranges_[ 0 ] = -1000.0;
 	size_t pnum = 1;
 	for ( ; it != this->last_profile(); ++it ) {
 		topo_ground_heights_[ pnum ] = (*it)->get( "Z0" );
 		topo_ranges_[ pnum++ ] = (*it)->get( "_RANGE_" );
 	}
 	topo_ground_heights_[ np+1 ] = topo_ground_heights_[ np ];
-	topo_ranges_[ np+1 ] = 2.0 * topo_ranges_[ np ];
+	topo_ranges_[ np+1 ] = 1.5 * max_valid_range_;
 
 	gsl_spline_init( topo_spline_, topo_ranges_, topo_ground_heights_, np+2 );
 
