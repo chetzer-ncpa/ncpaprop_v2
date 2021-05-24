@@ -42,6 +42,17 @@ void outputVec( Vec &v, double *z, int n, std::string filename ) {
 	out.close();
 }
 
+void outputArray( std::complex<double> *array, double *z, int n, std::string filename ) {
+	//PetscScalar *array;
+	std::ofstream out( filename );
+	//VecGetArray(v,&array);
+	for (int i = 0; i < n; i++) {
+		out << z[i] << "  " << array[i].real() << "  " << array[i].imag() << std::endl;
+	}
+	//VecRestoreArray(v,&array);
+	out.close();
+}
+
 void printVector( std::string title, std::vector< PetscScalar > &v ) {
 	std::cout << std::endl << title << std::endl;
 	for (std::vector<PetscScalar>::const_iterator i = v.cbegin(); i != v.cend(); ++i) {
@@ -483,7 +494,7 @@ int NCPA::EPadeSolver::solve_without_topography() {
 			}
 
 			std::cout << "Outputting starter..." << std::endl;
-			outputVec( psi_o, z, NZ, "starter_notopo.dat" );
+			outputVec( psi_o, z, NZ, "starter_new.dat" );
 
 			std::cout << "Finding ePade coefficients..." << std::endl;
 			std::vector< std::complex<double> > P, Q;
@@ -509,6 +520,9 @@ int NCPA::EPadeSolver::solve_without_topography() {
 					profile_index = atm_profile_2d->get_profile_index( rr );
 					calculate_atmosphere_parameters( atm_profile_2d, NZ, z, rr, z_ground, lossless, top_layer, freq, 
 						use_topo, k0, c0, c, a_t, k, n );
+					std::ostringstream oss;
+					oss << "k." << ir << ".dat";
+					outputArray( k, z, NZ, oss.str() );
 					delete_polymatrix_vector( npade+1, &qpowers );
 					// for (i = 0; i < npade+1; i++) {
 					// 	ierr = MatDestroy( qpowers + i );CHKERRQ(ierr);
@@ -519,7 +533,9 @@ int NCPA::EPadeSolver::solve_without_topography() {
 					ierr = MatDestroy( &q );
 
 					// epade( npade, k0, dr, &P, &Q );
-					// calculate_pade_coefficients( &taylor, npade, npade+1, &P, &Q );
+					taylor.clear();
+					taylor = taylor_exp_id_sqrt_1pQ_m1( 2*npade, k0*dr );
+					calculate_pade_coefficients( &taylor, npade, npade+1, &P, &Q );
 					ierr = MatZeroEntries( B );CHKERRQ(ierr);
 					ierr = MatZeroEntries( C );CHKERRQ(ierr);
 					// make_B_and_C_matrices( qpowers, npade, NZ, P, Q, &B, &C );
@@ -542,7 +558,7 @@ int NCPA::EPadeSolver::solve_without_topography() {
 				// 		zgi_r[ ir ]++;
 				// 	}
 				// } else {
-					zgi_r[ ir ] = 0.0;
+				zgi_r[ ir ] = 0.0;
 				// }
 
 
@@ -553,6 +569,34 @@ int NCPA::EPadeSolver::solve_without_topography() {
 				ierr = MatMult( B, psi_o, Bpsi_o );CHKERRQ(ierr);
 				ierr = KSPSetOperators( ksp, C, C );CHKERRQ(ierr);  // may not be necessary
 				ierr = KSPSolve( ksp, Bpsi_o, psi_o );CHKERRQ(ierr);
+				std::ostringstream oss;
+				oss << "Bpsi_o." << ir << ".dat";
+				outputVec( Bpsi_o, z, NZ, oss.str() );
+
+				// std::ostringstream oss;
+				// oss << "step" << ir << ".dat";
+				// std::ofstream compfile( oss.str(), std::ios_base::out );
+				// compfile << "ir = " << ir << std::endl;
+				// compfile << "rr = " << rr << std::endl;
+				// compfile << "z_ground = " << z_ground << std::endl;
+				// compfile << "k0 = " << k0 << std::endl;
+				// compfile << "c0 = " << c0 << std::endl;
+				// compfile << "h2 = " << h2 << std::endl;
+				// compfile << "ground_impedence_factor = " << ground_impedence_factor << std::endl;
+				// compfile << "hank = " << hank << std::endl;
+				// compfile << "P = { ";
+				// for (std::vector<PetscScalar>::const_iterator ci = P.cbegin(); 
+				// 	 ci != P.cend(); ++ci) {
+				// 	compfile << *ci << ", ";
+				// }
+				// compfile << "}" << std::endl;
+				// compfile << "Q = { ";
+				// for (std::vector<PetscScalar>::const_iterator ci = Q.cbegin(); 
+				// 	 ci != Q.cend(); ++ci) {
+				// 	compfile << *ci << ", ";
+				// }
+				// compfile << "}" << std::endl;
+				// compfile.close();
 			}
 			std::cout << "Stopped at range " << r[ NR-1 ]/1000.0 << " km" << std::endl;
 
@@ -1147,8 +1191,8 @@ void NCPA::EPadeSolver::calculate_atmosphere_parameters( NCPA::Atmosphere2D *atm
 	
 	// Set up vectors
 	for (int i = 0; i < NZvec; i++) {
-		if (z_vec[i] < z_g) {
-			k_vec[ i ] = 0.0;
+		if (absolute && (z_vec[i] < z_g)) {
+			k_vec[ i ] = 0.0;    // k == 0 below the ground
 		} else {
 			k_vec[ i ] = 2.0 * PI * freq / c_vec[ i ] + (a_vec[ i ] + abslayer[ i ]) * I;
 			//k_vec[ i ] = 2.0 * PI * freq / c_vec[ i ] + a_vec[ i ] * I;
