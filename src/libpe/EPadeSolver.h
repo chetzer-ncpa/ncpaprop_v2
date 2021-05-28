@@ -45,6 +45,8 @@ namespace NCPA {
 		int generate_polymatrices( Mat *qpowers, int npade, int NZ, 
 			std::vector< std::complex< double > > &P, std::vector< std::complex< double > > &Q,
 			Mat *B, Mat *C );
+		int generate_polymatrix( Mat *qpowers, int Qpowers_size, int NZ, 
+			std::vector< std::complex< double > > &T, Mat *B );
 		int create_polymatrix_vector( size_t nterms, const Mat *Q, Mat **qpowers );
 		int delete_polymatrix_vector( size_t nterms, Mat **qpowers );
 		int build_operator_matrix_with_topography( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, 
@@ -69,8 +71,8 @@ namespace NCPA {
 		int get_starter_gaussian( size_t NZ, double *z, double zs, double k0, int ground_index, Vec *psi );
 		// int get_starter_self( size_t NZ, double *z, double z_source, double z_ground, double k0, 
 		// 	Mat *qpowers, size_t npade, Vec *psi );
-		int get_starter_self_revised( size_t NZ, double *z, double z_source, double z_ground, double k0, 
-			Mat *qpowers, size_t npade, Vec *psi );
+		int get_starter_self_revised( size_t NZ, double *z, double z_source, double rr, 
+			double z_ground, double k0, Mat *qpowers, size_t npade, Vec *psi );
 
 		// functions to calculate atmospheric parameters
 		void absorption_layer( double lambda, double *z, int NZ, double *layer );
