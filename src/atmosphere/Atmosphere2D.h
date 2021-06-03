@@ -13,7 +13,7 @@ namespace NCPA {
 
 	public:
 		Atmosphere2D();
-		~Atmosphere2D();
+		virtual ~Atmosphere2D();
 
 		// setup of profiles
 		void insert_profile( const Atmosphere1D *profile, double range );
@@ -50,9 +50,9 @@ namespace NCPA {
 		bool contains_scalar( double range, std::string key );
 		bool contains_vector( double range, std::string key );
 		bool contains_key( double range, std::string key );
-		double get_interpolated_ground_elevation( double range );
-		double get_interpolated_ground_elevation_first_derivative( double range );
-		double get_interpolated_ground_elevation_second_derivative( double range );
+		virtual double get_interpolated_ground_elevation( double range );
+		virtual double get_interpolated_ground_elevation_first_derivative( double range );
+		virtual double get_interpolated_ground_elevation_second_derivative( double range );
 
 
 		// metadata

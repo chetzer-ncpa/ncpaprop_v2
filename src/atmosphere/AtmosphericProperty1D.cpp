@@ -92,27 +92,51 @@ void NCPA::AtmosphericProperty1D::get_altitude_vector( double *buffer, units_t *
 }
 
 
-void NCPA::AtmosphericProperty1D::check_altitude_( double z_req ) const {
-	if ( z_req < z_[0] || z_req > z_[ n_ - 1 ] ) {
-		std::ostringstream oss;
-		oss << "Requested altitude " << z_req << " " << NCPA::Units::toStr( z_units_ ) << " outside profile bounds.";
-		throw std::range_error( oss.str() );
+int NCPA::AtmosphericProperty1D::check_altitude_( double z_req ) const {
+	if ( z_req < z_[0] ) {
+		return -1;
+	} else if ( z_req > z_[ n_ - 1 ] ) {
+		return 1;
+	} else {
+		return 0;
 	}
+	// if ( z_req < z_[0] || z_req > z_[ n_ - 1 ] ) {
+	// 	std::ostringstream oss;
+	// 	oss << "Requested altitude " << z_req << " " << NCPA::Units::toStr( z_units_ ) << " outside profile bounds.";
+	// 	throw std::range_error( oss.str() );
+	// }
 }
 
 double NCPA::AtmosphericProperty1D::get( double z_req ) const {
-	check_altitude_( z_req );
-	return gsl_spline_eval( spline_, z_req, accel_ );
+	// check_altitude_( z_req );
+	int check = check_altitude_( z_req );
+	if ( check > 0 ) {
+		return values_[ n_ - 1 ];
+	} else if ( check < 0 ) {
+		return values_[ 0 ];
+	} else {
+		return gsl_spline_eval( spline_, z_req, accel_ );
+	}
 }
 
 double NCPA::AtmosphericProperty1D::get_first_derivative( double z_req ) const {
-	check_altitude_( z_req );
-	return gsl_spline_eval_deriv( spline_, z_req, accel_ );
+	// check_altitude_( z_req );
+	int check = check_altitude_( z_req );
+	if (check == 0) {
+		return gsl_spline_eval_deriv( spline_, z_req, accel_ );
+	} else {
+		return 0;
+	}
 }
 
 double NCPA::AtmosphericProperty1D::get_second_derivative( double z_req ) const {
-	check_altitude_( z_req );
-	return gsl_spline_eval_deriv2( spline_, z_req, accel_ );
+	// check_altitude_( z_req );
+	int check = check_altitude_( z_req );
+	if (check == 0) {
+		return gsl_spline_eval_deriv2( spline_, z_req, accel_ );
+	} else {
+		return 0;
+	}
 }
 
 void NCPA::AtmosphericProperty1D::resample( double new_dz ) {

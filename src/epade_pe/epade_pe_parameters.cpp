@@ -58,11 +58,13 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 	ps->addParameterDescription( "Required Parameters", "--freq", "Frequency of analysis (Hz)" );
 
 	ps->addParameter( new NCPA::StringParameter( "starter", "self" ) );
-	// ps->addTest( new NCPA::RequiredTest( "starter" ) );
-	// test = ps->addTest( new NCPA::StringSetTest( "starter" ) );
-	// test->addStringParameter( "self" );
-	// test->addStringParameter( "gaussian" );
-	// ps->addParameterDescription( "Required Parameters", "--starter", "Starter type: one of { self, gaussian }" );
+	ps->addTest( new NCPA::RequiredTest( "starter" ) );
+	NCPA::ParameterTest *test = ps->addTest( new NCPA::StringSetTest( "starter" ) );
+	test->addStringParameter( "self" );
+	test->addStringParameter( "gaussian" );
+	test->addStringParameter( "user" );
+	ps->addParameterDescription( "Required Parameters", "--starter", "Starter type: one of { self, gaussian, user }" );
+	
 
 	ps->addParameter( new NCPA::FloatParameter( "maxrange_km" ) );
 	ps->addTest( new NCPA::RequiredTest( "maxrange_km" ) );
@@ -154,10 +156,10 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 	ps->addParameterDescription( "Optional Parameters [default]", "--ground_impedence_real", "Real part of ground impedence [rigid ground]" );
 	ps->addParameter( new NCPA::FloatParameter( "ground_impedence_imag", 0.0 ) );
 	ps->addParameterDescription( "Optional Parameters [default]", "--ground_impedence_imag", "Imaginary part of ground impedence [rigid ground]" );
-
+	ps->addParameter( new NCPA::StringParameter( "starterfile", "" ) );
+	ps->addParameterDescription( "Optional Parameters [default]", "--starterfile", "File name containing starter [n/a]. Columns are #n# Height(km) RealPart ImaginaryPart" );
 	ps->addParameter( new NCPA::StringParameter( "attnfile", "" ) );
 	ps->addParameterDescription( "Optional Parameters [default]", "--attnfile", "File name containing attenuation, to override default Sutherland/Bass [n/a]. Columns are #n# Height(km) Attenuation(np/m)" );
-
 
 	// Setup flags
 	//ps->addUsageLine( "Flags:" );
@@ -165,6 +167,8 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 	ps->addParameterDescription( "Flags", "--write_2d_tloss", "Output 2-D transmission loss to tloss_2d.pe" );
 	ps->addParameter( new NCPA::FlagParameter( "write_atm_profile" ) );
 	ps->addParameterDescription( "Flags", "--write_atm_profile", "Output atmospheric profile to atm_profile.pe" );
+	ps->addParameter( new NCPA::FlagParameter( "write_starter" ) );
+	ps->addParameterDescription( "Flags", "--write_starter", "Output starter to starter.pe" );
 	ps->addParameter( new NCPA::FlagParameter( "lossless" ) );
 	ps->addParameterDescription( "Flags", "--lossless", "Ignore atmospheric attenuation" );
 	ps->addParameter( new NCPA::FlagParameter( "topo" ) );
@@ -190,16 +194,16 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 	// ps->addFooterText("../bin/ePape --singleprop --atmosfile NCPA_canonical_profile_trimmed.dat --freq 0.1 --azimuth 90 --maxrange_km 1000" );
 	ps->addBlankFooterLine();
 	// ps->addFooterText("../bin/ePape --singleprop --starter self --atmosfile NCPA_canonical_profile_trimmed.dat --freq 0.1 --azimuth 90 --maxrange_km 1000" );
-	ps->addFooterText("../bin/ePape --singleprop --atmosfile NCPA_canonical_profile_trimmed.dat --freq 0.1 --azimuth 90 --maxrange_km 1000" );
+	ps->addFooterText("../bin/ePape --singleprop --starter self --atmosfile NCPA_canonical_profile_trimmed.dat --freq 0.1 --azimuth 90 --maxrange_km 1000" );
 	ps->addBlankFooterLine();
 	//ps->addFooterText("../bin/ePape --singleprop --starter self --atmosfile2d atmosphere_2d_summary.dat --freq 0.5 --azimuth 90 --maxrange_km 1000 --lossless" );
-	ps->addFooterText("../bin/ePape --singleprop --atmosfile2d toy_profile_2d_summary.dat --freq 0.5 --azimuth 90 --maxrange_km 1000 --lossless --write_2d_tloss" );
+	ps->addFooterText("../bin/ePape --singleprop --starter self --atmosfile2d toy_profile_2d_summary.dat --freq 0.5 --azimuth 90 --maxrange_km 1000 --lossless --write_2d_tloss" );
 	ps->addBlankFooterLine();
 	// ps->addFooterText("../bin/ePape --singleprop --starter self --atmosfile2d atmosphere_2d_summary.dat --freq 1.0 --azimuth 90 --maxrange_km 500 --topo");
 	// ps->addFooterText("../bin/ePape --singleprop --atmosfile2d atmosphere_2d_summary.dat --freq 1.0 --azimuth 90 --maxrange_km 500 --topo");
 	// ps->addBlankFooterLine();
 	// ps->addFooterText("../bin/ePape --multiprop --starter self --atmosfile NCPA_canonical_profile_trimmed.dat --freq 0.5 --azimuth_start 0 --azimuth_end 360 --azimuth_step 2 --maxrange_km 1000");
-	ps->addFooterText("../bin/ePape --multiprop --atmosfile NCPA_canonical_profile_trimmed.dat --freq 0.5 --azimuth_start 0 --azimuth_end 360 --azimuth_step 2 --maxrange_km 1000");
+	ps->addFooterText("../bin/ePape --multiprop --starter self --atmosfile NCPA_canonical_profile_trimmed.dat --freq 0.5 --azimuth_start 0 --azimuth_end 360 --azimuth_step 2 --maxrange_km 1000");
 	ps->setFooterHangingIndent( 0 );
 	ps->setCommandMode( false );
 	ps->resetFooterIndent();

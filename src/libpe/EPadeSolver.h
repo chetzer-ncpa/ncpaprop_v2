@@ -14,6 +14,7 @@
 #define NCPAPROP_EPADE_PE_FILENAME_2D "tloss_2d.pe"
 #define NCPAPROP_EPADE_PE_FILENAME_MULTIPROP "tloss_multiprop.pe"
 #define NCPAPROP_EPADE_PE_FILENAME_BROADBAND "tloss_broadband.bin"
+#define NCPAPROP_EPADE_PE_FILENAME_STARTER "starter.pe"
 
 namespace NCPA {
 
@@ -38,10 +39,10 @@ namespace NCPA {
 		int calculate_pade_coefficients( std::vector<PetscScalar> *c, 
 			int n_numerator, int n_denominator, std::vector<PetscScalar> *numerator_coefficients,
 			std::vector<PetscScalar> *denominator_coefficients );
-		int make_q_powers( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, double r, 
-			std::complex<double> *k, 
-			double k0, double h2, double ground_height, std::complex<double> ground_impedence, 
-			std::complex<double> *n, size_t nqp, int boundary_index, const Mat &last_q, Mat *qpowers );
+		// int make_q_powers( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, double r, 
+		// 	std::complex<double> *k, 
+		// 	double k0, double h2, double ground_height, std::complex<double> ground_impedence, 
+		// 	std::complex<double> *n, size_t nqp, int boundary_index, const Mat &last_q, Mat *qpowers );
 		int generate_polymatrices( Mat *qpowers, int npade, int NZ, 
 			std::vector< std::complex< double > > &P, std::vector< std::complex< double > > &Q,
 			Mat *B, Mat *C );
@@ -52,14 +53,16 @@ namespace NCPA {
 		int build_operator_matrix_with_topography( NCPA::Atmosphere2D *atm, int NZvec, double *zvec, 
 			double r, std::complex<double> *k, double k0, double h2, double z_s,
 			std::complex<double> impedence_factor, std::complex<double> *n, 
-			int boundary_index, const Mat &last_q, Mat *q );
+			int boundary_index, const Mat &last_q, Mat *q, bool starter = false );
 		int build_operator_matrix_without_topography( 
 			int NZvec, double *zvec, double k0, double h2, 
 			std::complex<double> impedence_factor, std::complex<double> *n, size_t nqp, 
 			int boundary_index, Mat *q );
+		int zero_below_ground( Mat *q, int NZ, PetscInt ground_index );
 
 		// functions for recurrence relations of various Taylor series
 		std::vector<PetscScalar> taylor_exp_id_sqrt_1pQ_m1( int N, double delta );
+		std::vector<PetscScalar> taylor_sqrt_1pQ_exp_id_sqrt_1pQ_m1( int N, double delta );
 		std::vector<PetscScalar> taylor_1pQ_n025( int N );
 		std::vector<PetscScalar> taylor_1pQ_025( int N );
 		std::vector<PetscScalar> taylor_1pQpid_n025( int N, double delta );
@@ -69,10 +72,11 @@ namespace NCPA {
 
 		// functions to calculate the various starter fields
 		int get_starter_gaussian( size_t NZ, double *z, double zs, double k0, int ground_index, Vec *psi );
-		// int get_starter_self( size_t NZ, double *z, double z_source, double z_ground, double k0, 
-		// 	Mat *qpowers, size_t npade, Vec *psi );
-		int get_starter_self_revised( size_t NZ, double *z, double z_source, double rr, 
-			double z_ground, double k0, Mat *qpowers, size_t npade, Vec *psi );
+		int get_starter_self( size_t NZ, double *z, double z_source, int ground_index, 
+			double k0, Mat *qpowers, size_t npade, Vec *psi );
+		int get_starter_user( std::string filename, int NZ, double *z, Vec *psi );
+		// int get_starter_self_revised( size_t NZ, double *z, double z_source, double rr, 
+		// 	double z_ground, double k0, Mat *qpowers, size_t npade, Vec *psi );
 
 		// functions to calculate atmospheric parameters
 		void absorption_layer( double lambda, double *z, int NZ, double *layer );
@@ -103,7 +107,7 @@ namespace NCPA {
 		bool use_atm_1d = false, use_atm_2d = false, use_atm_toy = false, use_topo = false;
 		bool z_ground_specified = false, lossless = false, top_layer = true;
 		bool multiprop = false, write1d = true, write2d = false, calculate_attn = true;
-		bool broadband = false;
+		bool broadband = false, write_starter = false;
 		double r_max;    // range limits
 		double z_max, z_min, z_ground, z_bottom;  // atmosphere profile limits
 		double zs, zr;  // source height, receiver height
@@ -114,6 +118,7 @@ namespace NCPA {
 		//std::string gnd_imp_model;
 		std::string starter;
 		std::string attnfile;
+		std::string user_starter_file;
 
 		std::vector< double > zt;
 		std::vector< int > zti;
