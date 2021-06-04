@@ -19,7 +19,7 @@ namespace NCPA {
 		//std::stack< NCPA::units_t > z_units_;
 		units_t z_units_;
 
-		void check_altitude_( double z_req ) const;
+		int check_altitude_( double z_req ) const;
 		void build_splines_();
 		void delete_splines_();
 

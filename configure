@@ -8818,7 +8818,7 @@ LIBS="-lgsl -lgslcblas -lm -lfftw3"
 
 WARNINGFLAGS=${warning_compiler_flags}
 
-CXXFLAGS="-fpic -c -Wall"
+CXXFLAGS="-fpic -c -Wall $CXXFLAGS"
 
 LDFLAGS="${LDFLAGS} -L/usr/lib"
 STATICLIBS="../../lib/libatmosphere.a ../../lib/libcommon.a"

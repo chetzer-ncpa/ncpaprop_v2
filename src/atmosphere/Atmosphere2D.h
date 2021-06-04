@@ -13,13 +13,15 @@ namespace NCPA {
 
 	public:
 		Atmosphere2D();
-		~Atmosphere2D();
+		virtual ~Atmosphere2D();
 
 		// setup of profiles
 		void insert_profile( const Atmosphere1D *profile, double range );
 		void set_insert_range_units( units_t u );
 		void sort_profiles();
 		void convert_range_units( NCPA::units_t new_units );
+		void set_maximum_valid_range( double maxrange );
+		double get_maximum_valid_range() const;
 
 		// profile manipulation
 		void add_property( std::string key, size_t n_points, double *quantity_points, 
@@ -48,6 +50,10 @@ namespace NCPA {
 		bool contains_scalar( double range, std::string key );
 		bool contains_vector( double range, std::string key );
 		bool contains_key( double range, std::string key );
+		virtual double get_interpolated_ground_elevation( double range );
+		virtual double get_interpolated_ground_elevation_first_derivative( double range );
+		virtual double get_interpolated_ground_elevation_second_derivative( double range );
+
 
 		// metadata
 		double get_minimum_altitude( double range );
@@ -73,12 +79,16 @@ namespace NCPA {
 		void convert_property_units( std::string key, units_t new_units );
 		void read_attenuation_from_file( std::string new_key, std::string filename );    // apply universally
 		
+
+		
 		std::vector< NCPA::Atmosphere1D * >::iterator first_profile();
 		std::vector< NCPA::Atmosphere1D * >::iterator last_profile();
 	protected:
 		void clear_last_index_();
 		void set_last_index_( size_t ind );
 		void calculate_midpoints_();
+		void generate_ground_elevation_spline_();
+		void free_ground_elevation_spline_();
 		
 
 		// data storage
@@ -90,6 +100,14 @@ namespace NCPA {
 		double last_index_min_range_, last_index_max_range_;
 		units_t range_units_;
 		bool sorted_;
+
+		// ground elevation splines
+		double *topo_ground_heights_;
+		double *topo_ranges_;
+		gsl_interp_accel *topo_accel_;
+		gsl_spline *topo_spline_;
+
+		double max_valid_range_;
 
 	};
 

@@ -47,6 +47,8 @@ namespace NCPA {
 	double normalizeAzimuth( double in );
 	
 	// Utility functions
+	int **imatrix(long nr, long nc);
+	int free_imatrix(int** v, long nr, long nc);
 	double **dmatrix(long nr, long nc);
 	int free_dmatrix(double** v, long nr, long nc);
 	std::complex<double> **cmatrix(long nr, long nc);

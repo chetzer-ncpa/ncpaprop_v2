@@ -646,7 +646,7 @@ AC_CHECK_FILE( ${SLEPC_DIR}/${PETSC_ARCH_COMPLEX}/lib/slepc/conf/slepcvariables,
 AC_SUBST([INCLUDEFLAGS],"-I. -I../common -I../atmosphere -I../libmodes -I../libpe -I../libbroadband -I/usr/local/include -I/usr/include")
 AC_SUBST([LIBS],"-lgsl -lgslcblas -lm -lfftw3")
 AC_SUBST([WARNINGFLAGS],${warning_compiler_flags})
-AC_SUBST([CXXFLAGS], "-fpic -c -Wall")
+AC_SUBST([CXXFLAGS], "-fpic -c -Wall $CXXFLAGS")
 LDFLAGS="${LDFLAGS} -L/usr/lib"
 AC_SUBST([STATICLIBS],"../../lib/libatmosphere.a ../../lib/libcommon.a")
 AC_SUBST([MODELIBS],"../../lib/libmodes.a")

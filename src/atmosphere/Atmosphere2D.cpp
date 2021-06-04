@@ -5,6 +5,11 @@
 #include <cfloat>
 #include <stdexcept>
 #include <algorithm>
+#include <cstring>
+
+#include "gsl/gsl_errno.h"
+#include "gsl/gsl_spline.h"
+
 
 
 NCPA::Atmosphere2D::Atmosphere2D() {
@@ -12,15 +17,36 @@ NCPA::Atmosphere2D::Atmosphere2D() {
 	midpoints_.clear();
 	clear_last_index_();
 	range_units_ = NCPA::UNITS_NONE;
+	max_valid_range_ = 0;
+	
+	topo_ground_heights_ = NULL;
+	topo_ranges_ = NULL;
+	topo_accel_ = NULL;
+	topo_spline_ = NULL;
 }
 
 NCPA::Atmosphere2D::~Atmosphere2D() {
+	free_ground_elevation_spline_();
 	for ( std::vector< NCPA::Atmosphere1D * >::iterator i = profiles_.begin();
 		i != profiles_.end(); ++i ) {
 		delete (*i);
 	}
 	profiles_.clear();
 	midpoints_.clear();
+}
+
+void NCPA::Atmosphere2D::set_maximum_valid_range( double maxrange ) {
+	if (range_units_ == NCPA::UNITS_NONE) {
+		throw std::runtime_error( "Range units have not been specified!" );
+	}
+
+	max_valid_range_ = maxrange;
+
+	std::cout << "Setting maximum range to " << maxrange << " " << NCPA::Units::toString( range_units_ ) << std::endl;
+}
+
+double NCPA::Atmosphere2D::get_maximum_valid_range() const {
+	return max_valid_range_;
 }
 
 bool NCPA::sort_profiles_by_range_( Atmosphere1D *p1, Atmosphere1D *p2 ) {
@@ -39,10 +65,18 @@ void NCPA::Atmosphere2D::insert_profile( const NCPA::Atmosphere1D *profile, doub
 	profiles_.push_back( newProfile );
 	sorted_ = false;
 	clear_last_index_();
+
+	if (range > max_valid_range_) {
+		set_maximum_valid_range( range );
+	}
+
+	// clear ground elevation spline
+	free_ground_elevation_spline_();
 }
 
 void NCPA::Atmosphere2D::set_insert_range_units( units_t u ) {
 	range_units_ = u;
+	free_ground_elevation_spline_();
 }
 
 void NCPA::Atmosphere2D::clear_last_index_() {
@@ -79,6 +113,7 @@ void NCPA::Atmosphere2D::sort_profiles() {
 	midpoints_.clear();
 	clear_last_index_();
 	sorted_ = true;
+	free_ground_elevation_spline_();
 }
 
 void NCPA::Atmosphere2D::calculate_midpoints_() {
@@ -275,6 +310,7 @@ void NCPA::Atmosphere2D::convert_altitude_units( NCPA::units_t new_units ) {
 		  it != profiles_.end(); ++it ) {
 		(*it)->convert_altitude_units( new_units );
 	}
+	free_ground_elevation_spline_();
 }
 
 void NCPA::Atmosphere2D::convert_property_units( std::string key, NCPA::units_t new_units ) {
@@ -282,13 +318,20 @@ void NCPA::Atmosphere2D::convert_property_units( std::string key, NCPA::units_t 
 		  it != profiles_.end(); ++it ) {
 		(*it)->convert_property_units( key, new_units );
 	}
+	if (key == "Z0") {
+		free_ground_elevation_spline_();
+	}
 }
 
 void NCPA::Atmosphere2D::convert_range_units( NCPA::units_t new_units ) {
+	NCPA::units_t old_units = range_units_;
 	this->convert_property_units( "_RANGE_", new_units );
+	max_valid_range_ = NCPA::Units::convert( max_valid_range_, old_units, new_units );
+	range_units_ = new_units;
 	sorted_ = false;
 	clear_last_index_();
 	calculate_midpoints_();
+	free_ground_elevation_spline_();
 }
 
 void NCPA::Atmosphere2D::get_minimum_altitude_limits( double &lowlimit, double &highlimit ) {
@@ -341,12 +384,18 @@ void NCPA::Atmosphere2D::copy_scalar_property( std::string old_key, std::string 
 		  it != profiles_.end(); ++it ) {
 		(*it)->copy_scalar_property( old_key, new_key );
 	}
+	if (old_key == "Z0") {
+		free_ground_elevation_spline_();
+	}
 }
 
 void NCPA::Atmosphere2D::remove_property( std::string key ) {
 	for ( std::vector< NCPA::Atmosphere1D * >::iterator it = profiles_.begin();
 		  it != profiles_.end(); ++it ) {
 		(*it)->remove_property( key );
+	}
+	if (key == "Z0") {
+		free_ground_elevation_spline_();
 	}
 }
 
@@ -356,4 +405,71 @@ std::vector< NCPA::Atmosphere1D * >::iterator NCPA::Atmosphere2D::first_profile(
 
 std::vector< NCPA::Atmosphere1D * >::iterator NCPA::Atmosphere2D::last_profile() {
 	return profiles_.end();
+}
+
+void NCPA::Atmosphere2D::generate_ground_elevation_spline_() {
+
+	free_ground_elevation_spline_();
+
+	topo_accel_ = gsl_interp_accel_alloc();
+	size_t np = profiles_.size();
+	topo_spline_ = gsl_spline_alloc( gsl_interp_cspline, np + 2 );
+	topo_ground_heights_ = new double[ np + 2 ];
+	topo_ranges_ = new double[ np + 2 ];
+	std::memset( topo_ground_heights_, 0, (np + 2) * sizeof(double) );
+	std::memset( topo_ranges_, 0, (np + 2) * sizeof(double) );
+
+	std::vector< NCPA::Atmosphere1D * >::iterator it = this->first_profile();
+	topo_ground_heights_[ 0 ] = (*it)->get( "Z0" );
+	topo_ranges_[ 0 ] = -1000.0;
+	size_t pnum = 1;
+	for ( ; it != this->last_profile(); ++it ) {
+		topo_ground_heights_[ pnum ] = (*it)->get( "Z0" );
+		topo_ranges_[ pnum++ ] = (*it)->get( "_RANGE_" );
+	}
+	topo_ground_heights_[ np+1 ] = topo_ground_heights_[ np ];
+	topo_ranges_[ np+1 ] = 1.1 * max_valid_range_;
+
+	gsl_spline_init( topo_spline_, topo_ranges_, topo_ground_heights_, np+2 );
+
+}
+
+void NCPA::Atmosphere2D::free_ground_elevation_spline_() {
+	if (topo_spline_ != NULL) {
+		gsl_spline_free( topo_spline_ );
+		topo_spline_ = NULL;
+	}
+	if (topo_accel_ != NULL) {
+		gsl_interp_accel_free( topo_accel_ );
+		topo_accel_ = NULL;
+	}
+	if (topo_ranges_ != NULL) {
+		delete [] topo_ranges_;
+		topo_ranges_ = NULL;
+	}
+	if (topo_ground_heights_ != NULL) {
+		delete [] topo_ground_heights_;
+		topo_ground_heights_ = NULL;
+	}
+}
+
+double NCPA::Atmosphere2D::get_interpolated_ground_elevation( double range ) {
+	if (topo_spline_ == NULL) {
+		generate_ground_elevation_spline_();
+	}
+	return gsl_spline_eval( topo_spline_, range, topo_accel_ );
+}
+
+double NCPA::Atmosphere2D::get_interpolated_ground_elevation_first_derivative( double range ) {
+	if (topo_spline_ == NULL) {
+		generate_ground_elevation_spline_();
+	}
+	return gsl_spline_eval_deriv( topo_spline_, range, topo_accel_ );
+}
+
+double NCPA::Atmosphere2D::get_interpolated_ground_elevation_second_derivative( double range ) {
+	if (topo_spline_ == NULL) {
+		generate_ground_elevation_spline_();
+	}
+	return gsl_spline_eval_deriv2( topo_spline_, range, topo_accel_ );
 }
