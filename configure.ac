@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([NCPA Propagation Modeling Suite], [2.0.1], [claus@olemiss.edu], ncpaprop)
+AC_INIT([NCPA Propagation Modeling Suite], [2.2.0], [claus@olemiss.edu], ncpaprop)
 #AM_INIT_AUTOMAKE
 
 AC_CONFIG_SRCDIR([src/common/parameterset.h])
@@ -672,6 +672,7 @@ AC_CONFIG_FILES([
 		src/modess/Makefile
 		src/modbb/Makefile
 		src/epade_pe/Makefile
+		src/pebb/Makefile
 		src/wmod/Makefile
 ])
 

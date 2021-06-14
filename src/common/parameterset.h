@@ -192,6 +192,10 @@ namespace NCPA {
 		// This option/flag must be present if at least one of a set of 
 		// other options is present. 	
 		PARAMETER_TEST_REQUIRED_IF,
+
+		// This option/flag must be present if none of a set of other
+		// options is present
+		PARAMETER_TEST_REQUIRE_IF_NOT,
 	 
 		// Designates a group of options, one and only one of which
 		// must be present.
@@ -704,6 +708,26 @@ namespace NCPA {
 		std::vector< std::string > _prereqs;
 	};
 	
+	/** Test whether an option is present if another option is also set */
+	class RequiredIfOtherIsNotPresentTest : public ParameterTest {
+	public:
+		RequiredIfOtherIsNotPresentTest( const std::string& option_name );
+		RequiredIfOtherIsNotPresentTest( const std::string& option_name,
+			const std::string& prereq );
+		RequiredIfOtherIsNotPresentTest( const std::string& option_name, 
+			unsigned int nPrereqs, std::string *prereqs );
+		RequiredIfOtherIsNotPresentTest( const std::string& option_name,
+			const std::vector< std::string > prereq_vector );
+		bool validate( const ParameterVector& param );
+		std::string description() const;
+		std::string failureMessage() const;
+		std::string valueString() const;
+		void addStringParameter( const std::string param );
+		bool ready() const;
+	private:
+		std::vector< std::string > _prereqs;
+	};
+
 	/** Test whether one and only one of a set of options or flags is present */
 	class RadioButtonTest : public ParameterTest {
 	public:

@@ -52,10 +52,10 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 
 
 	// Required parameters
-	ps->addParameter( new NCPA::FloatParameter( "freq" ) );
-	ps->addTest( new NCPA::RequiredTest( "freq" ) );
+	ps->addParameter( new NCPA::FloatParameter( "freq", 0.1 ) );
+	ps->addTest( new NCPA::RequiredIfOtherIsNotPresentTest( "freq", "broadband" ) );
 	ps->addTest( new NCPA::FloatGreaterThanTest( "freq", 0.0 ) );
-	ps->addParameterDescription( "Required Parameters", "--freq", "Frequency of analysis (Hz)" );
+	ps->addParameterDescription( "Required Parameters", "--freq", "Frequency of analysis (Hz) (ignored if --broadband)" );
 
 	ps->addParameter( new NCPA::StringParameter( "starter", "self" ) );
 	ps->addTest( new NCPA::RequiredTest( "starter" ) );
@@ -175,7 +175,25 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 	ps->addParameterDescription( "Flags", "--topo", "Use topography.  Requires presence of 'Z0' parameter in atmospheric files" );
 	ps->addParameter( new NCPA::FlagParameter( "disable_top_layer" ) );
 	ps->addParameter( new NCPA::FlagParameter( "broadband" ) );
-	//ps->addParameterDescription( "Flags", "--broadband", "Calculate at multiple frequencies" );
+	ps->addParameterDescription( "Flags", "--broadband", "Calculate at multiple frequencies" );
+
+	ps->setParameterIndent( 2 * DEFAULT_PARAMETER_INDENT );
+	ps->addParameter( new NCPA::FloatParameter( "f_min" ) );
+	ps->addTest( new NCPA::FloatGreaterThanTest( "f_min", 0.0 ) );
+	ps->addTest( new NCPA::RequiredIfOtherIsPresentTest( "f_min", "broadband" ) );
+	ps->addParameterDescription( "Flags", "--f_min", "Minimum frequency in Hz [required]" );
+
+	ps->addParameter( new NCPA::FloatParameter( "f_max" ) );
+	ps->addTest( new NCPA::FloatGreaterThanTest( "f_max", 0.0 ) );
+	ps->addTest( new NCPA::RequiredIfOtherIsPresentTest( "f_max", "broadband" ) );
+	ps->addParameterDescription( "Flags", "--f_max", "Maximum frequency in Hz [required]" );
+
+	ps->addParameter( new NCPA::FloatParameter( "f_step" ) );
+	ps->addTest( new NCPA::FloatGreaterThanTest( "f_step", 0.0 ) );
+	ps->addTest( new NCPA::RequiredIfOtherIsPresentTest( "f_step", "broadband" ) );
+	ps->addParameterDescription( "Flags", "--f_step", "Frequency interval in Hz [required]" );
+	ps->resetParameterIndent();
+
 
 
 	// Footer with file formats and sample commands

@@ -61,7 +61,7 @@ NCPA::ModalBroadbandPropagator::ModalBroadbandPropagator( NCPA::ParameterSet *pa
 	mode_R     = dmatrix(Nfreq, MAX_MODES);
 	read_dispersion_file();
 
-	f_step = f_vec[ 1 ] - f_vec[ 0 ];
+	f_step = f_vec[ 2 ] - f_vec[ 1 ];
 
   // if the option --nfft was not passed to the main program then the 
   // NFFT default was 0. Otherwise it has the requested positive value. 
@@ -167,73 +167,44 @@ int NCPA::ModalBroadbandPropagator::calculate_waveform() {
 								      
   get_source_spectrum( dft_vec, pulse_vec, arg_vec );
 	
-	// if (Nr == 1) { // propagation to one receiver at distance RR from source
-	//     std::cout << "--> Doing pulse propagation source-to-receiver at one range: " 
-	//          << r_vec[0]/1000.0 << " km" << std::endl;
-	         
-	//     t0 = r_vec[0] /max_cel;
- //      std::memset( transfer_function,  0, Nfreq * sizeof( std::complex< double > ) );
- //      compute_modal_sum( r_vec[ 0 ] );
-	//     //
-	//     // fft propagation: note that here 'pulse_vec' is overwritten with the propagated pulse
-	//     //							
- //      fft_pulse_prop( t0, r_vec[0], dft_vec, pulse_vec);						      
-      
- //      // save propagated pulse to file
-	//   // DV 20150514 - factor of two necessary because we only used 
-	//   // the positive freq. spectrum in the fft
- //      // DV 20170810 - parameter factor to make it easy to agree with other codes 
- //      // (e.g. Roger Waxler's modal code)
- //      double factor = 2.0;													
- //      f = fopen(waveform_out_file.c_str(),"w");
- //      for(i=0; i<NFFT; i++) {
- //          fprintf(f,"%12.6f %15.6e\n", 1.0*i/fmx+t0, factor*real(pulse_vec[i]));
- //      }
- //      fclose(f);
 
- //      std::cout << "--> Propagated pulse saved in file: '" << waveform_out_file << "'" << std::endl
- //           << "' with format: | Time (s) | Re(pulse) |" << std::endl;  
+  std::cout << "--> Propagating pulse from source-to-receivers on grid ..." << std::endl;					      
+    printf("----------------------------------------------\n");
+    printf("max_celerity     t0             R\n");
+    printf("    m/s          sec            km\n");
+    printf("----------------------------------------------\n");
 
-	// }
-	// else { // propagation to several receivers
-		// @todo combine these, only difference is the use of multiple ranges?
+    f=fopen(waveform_out_file.c_str(),"w");
+    tskip = 0.0;
+    //double DR = r_vec[1] - r_vec[0];
+    //for(n=0; n<=(int)(std::floor((r_vec[Nr-1]-r_vec[0])/DR)); n++) {
+    for (n=0; n < Nr; n++) {
+        //rr= R_start + DR*n;
+    	  rr = r_vec[ n ];
+        t0=tskip+rr/max_cel;
+        printf("%8.3f     %9.3f      %9.3f\n", max_cel, t0, rr/1000.0);
 
-	  std::cout << "--> Propagating pulse from source-to-receivers on grid ..." << std::endl;					      
-      printf("----------------------------------------------\n");
-      printf("max_celerity     t0             R\n");
-      printf("    m/s          sec            km\n");
-      printf("----------------------------------------------\n");
+        std::memset( transfer_function,  0, Nfreq * sizeof( std::complex< double > ) );
+        compute_modal_sum( rr );
 
-      f=fopen(waveform_out_file.c_str(),"w");
-      tskip = 0.0;
-      //double DR = r_vec[1] - r_vec[0];
-      //for(n=0; n<=(int)(std::floor((r_vec[Nr-1]-r_vec[0])/DR)); n++) {
-      for (n=0; n < Nr; n++) {
-          //rr= R_start + DR*n;
-      	  rr = r_vec[ n ];
-          t0=tskip+rr/max_cel;
-          printf("%8.3f     %9.3f      %9.3f\n", max_cel, t0, rr/1000.0);
+        // the call with NFFT as argument			            
+        fft_pulse_prop( t0, rr, dft_vec, pulse_vec );
 
-          std::memset( transfer_function,  0, Nfreq * sizeof( std::complex< double > ) );
-          compute_modal_sum( rr );
-
-          // the call with NFFT as argument			            
-          fft_pulse_prop( t0, rr, dft_vec, pulse_vec );
-
-          // DV 20170810 - parameter 'factor' to make it easy to agree with other codes 
-          // (e.g. Roger Waxler's modal code)
-          double factor = 2.0;								              
-          for(i=0;i<NFFT;i++){
-              fprintf(f,"%10.3f %12.6f %15.6e\n", rr/1000.0, 1.0*i/fmx+t0, factor*real(pulse_vec[i]));
-          }
-          fprintf(f,"\n");
-      }
-      fclose(f);
-      printf("f_step = %f   1/f_step = %f\n", f_step, 1.0/f_step);
-      printf("Time array length = %d; delta_t = %g s\n", NFFT, 1.0/fmx);
-      printf("Propagation results saved in file: %s\n", waveform_out_file.c_str());
-      printf("with columns: R (km) | time (s) | pulse(R,t) |\n");
-  // }
+        // DV 20170810 - parameter 'factor' to make it easy to agree with other codes 
+        // (e.g. Roger Waxler's modal code)
+        double factor = 2.0;								              
+        for(i=0;i<NFFT;i++){
+            fprintf(f,"%10.3f %12.6f %15.6e\n", rr/1000.0, 1.0*i/fmx+t0, 
+              factor*real(pulse_vec[i]));
+        }
+        fprintf(f,"\n");
+    }
+    fclose(f);
+    printf("f_step = %f   1/f_step = %f\n", f_step, 1.0/f_step);
+    printf("Time array length = %d; delta_t = %g s\n", NFFT, 1.0/fmx);
+    printf("Propagation results saved in file: %s\n", waveform_out_file.c_str());
+    printf("with columns: R (km) | time (s) | pulse(R,t) |\n");
+  
 
   delete [] pulse_vec;
   delete [] arg_vec;

@@ -2021,3 +2021,95 @@ void NCPA::StringSetTest::addStringParameter( std::string newChoice ) {
 bool NCPA::StringSetTest::ready() const {
 	return ! ( _choices.empty() );
 }
+
+
+
+
+
+
+
+
+NCPA::RequiredIfOtherIsNotPresentTest::RequiredIfOtherIsNotPresentTest( 
+	const std::string& optionName ) 
+	: ParameterTest( optionName, false ) {}
+
+NCPA::RequiredIfOtherIsNotPresentTest::RequiredIfOtherIsNotPresentTest(
+	const std::string& optionName, const std::string& prereq ) 
+	: ParameterTest( optionName, false ) {
+	std::string new_prereq{ prereq };
+	_prereqs.push_back( prereq );
+	_ready = true;
+}
+
+NCPA::RequiredIfOtherIsNotPresentTest::RequiredIfOtherIsNotPresentTest(
+	const std::string& optionName, unsigned int nPrereqs, std::string *prereqs ) 
+	: ParameterTest( optionName, false ) {
+	std::string pr;
+	for (unsigned int i = 0; i < nPrereqs; i++) {
+		pr = prereqs[ i ];
+		_prereqs.push_back( pr );
+	}
+	_ready = true;
+}
+
+NCPA::RequiredIfOtherIsNotPresentTest::RequiredIfOtherIsNotPresentTest(
+	const std::string& optionName, const std::vector< std::string > prereq_vector ) 
+	: ParameterTest( optionName, false ), _prereqs{ prereq_vector } {
+	//_prereqs = prereq_vector;
+	_ready = true;
+}
+
+std::string NCPA::RequiredIfOtherIsNotPresentTest::description() const {
+	return _optName + " is present if none of " + this->valueString() 
+		+ " are also present.";
+}
+std::string NCPA::RequiredIfOtherIsNotPresentTest::failureMessage() const {
+	return "None of " + this->valueString() + " are set, but " + _optName
+		+ " is not set.";
+}
+std::string NCPA::RequiredIfOtherIsNotPresentTest::valueString() const {
+	std::ostringstream oss;
+	oss << "{ ";
+	for (std::vector<std::string>::const_iterator it = _prereqs.begin();
+			it != _prereqs.end(); ++it) {
+		if (it != _prereqs.begin()) {
+			oss << ", ";
+		}
+		oss << *it;
+	}
+	oss << " }";
+	return oss.str();
+}
+bool NCPA::RequiredIfOtherIsNotPresentTest::validate( const ParameterVector& paramVec )  {
+	
+	if (! this->ready() ) {
+		throw new std::logic_error( _optName + ": no options defined." );
+	}
+	
+	// see if at least one prereq is present
+	bool prereqs_met = false;
+	NCPA::GenericParameter *prereq_param = NULL;
+	for (std::vector<std::string>::const_iterator it = _prereqs.begin();
+			it != _prereqs.end(); ++it) {
+		prereq_param = paramVec.findParameter( *it );
+		if ( prereq_param != NULL && prereq_param->wasFound() ) {
+			prereqs_met = true;
+		}
+	}
+
+	NCPA::GenericParameter *param = paramVec.findParameter( _optName );
+
+	// if prereq(s) there, check for option presence, otherwise return true
+	if (prereqs_met) {
+		return !(param != NULL && param->wasFound());
+	} else {
+		return true;
+	}
+}
+void NCPA::RequiredIfOtherIsNotPresentTest::addStringParameter( const std::string param ) {
+	std::string str = param;
+	_prereqs.push_back( str );
+}
+bool NCPA::RequiredIfOtherIsNotPresentTest::ready() const {
+	return !( _prereqs.empty() );
+}

@@ -90,11 +90,11 @@ namespace NCPA {
 			std::complex<double> *n_vec );
 
 		void set_1d_output( bool tf );
-		void write_broadband_header( std::string filename, double *az_vec, size_t n_az, 
-			double *f_vec, size_t n_f, unsigned int precision_factor );
+		void write_broadband_header( std::string filename, double *az_vec, 
+			size_t n_az, double *f_vec, size_t n_f );
 		void write_broadband_results( std::string filename, double this_az, double this_f, 
-			double *r_vec, size_t n_r, double *z_vec, size_t n_z, std::complex< double > **tloss_mat, 
-			unsigned int precision_factor );
+			double *r_vec, size_t n_r, double *z_vec, size_t n_z, 
+			std::complex< double > **tloss_mat );
 
 		double *z = NULL, *z_abs = NULL, *r = NULL, *f = NULL, calc_az;
 		std::complex< double > **tl;

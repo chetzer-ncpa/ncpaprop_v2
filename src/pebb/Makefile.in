@@ -6,11 +6,8 @@ include @SLEPC_INCLUDE_FILE_GENERIC@
 #include $(SLEPC_DIR)/conf/slepc_common
 
 INCPATHS = @INCLUDEFLAGS@ ${PETSC_CC_INCLUDES} ${SLEPC_CC_INCLUDES}
-#SOURCES=anyoption.cpp binaryreader.cpp geographic.cpp util.cpp units.cpp parameterset.cpp
-SOURCES=BroadbandPropagator.cpp ModalBroadbandPropagator.cpp PEBroadbandPropagator.cpp
-
-OBJS=$(SOURCES:.cpp=.o)
-TARGET=libbroadband.a
+OBJS=PEBB_main.o pebb_parameters.o
+TARGET=PEBB
 
 
 all: $(TARGET)
@@ -18,9 +15,9 @@ all: $(TARGET)
 .PHONY: clean
 
 # link	
-$(TARGET): $(OBJS)
-	ar curv $@ $^
-	cp $@ ../../lib
+$(TARGET): $(OBJS) @STATICLIBS@
+	${CXX_LINKER} -o $@ $^  @LDFLAGS@ @BROADBANDLIBS@ @PELIBS@ @MODELIBS@ @STATICLIBS@ ${CXX_LINKER_FLAGS} ${SLEPC_LIB} ${PETSC_LIB} @LIBS@
+	cp $@ ../../bin
 	
 # compile 
 %.o: %.cpp
@@ -28,3 +25,4 @@ $(TARGET): $(OBJS)
 
 clean::
 	-$(RM) -rf $(OBJS) $(TARGET)
+

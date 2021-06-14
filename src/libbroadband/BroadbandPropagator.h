@@ -18,11 +18,9 @@ namespace NCPA {
 
 	protected:
 		bool zero_attn_flag, single_receiver;
-		int    Nfreq, Nr, NFFT, src_flg; //, *mode_count;
-		double f_center, f_step, max_cel; //, R_start, R_end, DR;
-		// double rho_zsrc, rho_zrcv;
+		int    Nfreq, Nr, NFFT, src_flg; 
+		double f_center, f_step, max_cel; 
 		double *f_vec, *r_vec;
-		// double **re_k, **im_k, **mode_S, **mode_R;
 		std::complex< double > *transfer_function;
 		std::string waveform_out_file, source_type, source_file;
 		// std::string dispersion_input_file;
