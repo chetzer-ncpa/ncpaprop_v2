@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([NCPA Propagation Modeling Suite], [2.1.0], [claus@olemiss.edu], ncpaprop)
+AC_INIT([NCPA Propagation Modeling Suite], [2.1.1], [claus@olemiss.edu], ncpaprop)
 #AM_INIT_AUTOMAKE
 
 AC_CONFIG_SRCDIR([src/common/parameterset.h])
@@ -99,6 +99,31 @@ AS_IF([test "x$PERLPATH" = "x"],[
 ])
 
 AC_PROG_RANLIB
+
+AC_PROG_MAKE_SET
+#AS_IF([test "x$ac_make" = "x"],[
+#	AS_IF([test "x$enable_autodependencies" = "xyes"],[
+#		AS_CASE([$host_os],
+#			[darwin*],[
+#				AC_MSG_ERROR([Auto dependencies not available for MacOS.  Install make using your package manager of choice.])
+#			],
+#			[linux*],[
+#				AS_CASE([$default_package_manager],
+#					[*apt-get],[
+#						sudo $default_package_manager -y install make
+#					],
+#					[*yum],[
+#						sudo $default_package_manager -y install make
+#					],[
+#						AC_MSG_ERROR([No supported package manager found (apt and yum currently supported)])
+#					]
+#				)
+#		])
+#	],[
+#		AC_MSG_ERROR([Failed to detect a make executable.  Please install the appropriate package or compile from source.])
+#	])
+#])
+
 AC_PROG_CXX
 AS_IF([test "x$CXX" = "x"],[
 	AS_IF([test "x$enable_autodependencies" = "xyes"],[
