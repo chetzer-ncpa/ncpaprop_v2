@@ -337,10 +337,8 @@ void NCPA::BroadbandPropagator::fft_pulse_prop( double t0, double range,
 	std::complex<double> *dft_vec, std::complex<double> *pulse_vec ) {
 
 	int i,i0; //,j,smooth_space;
-  // double sqrt_rho_ratio = sqrt(rho_zrcv/rho_zsrc);
   std::complex<double> cup,pot,k_H,mode_prod,t_phase,*arg_vec;
   std::complex<double> I (0.0, 1.0);
-  // std::complex<double> expov8pir = I*exp(-I*Pi*0.25)/sqrt(8.0*Pi*range);
   double df = f_vec[1] - f_vec[0];
   fftw_plan p;
 
@@ -358,42 +356,12 @@ void NCPA::BroadbandPropagator::fft_pulse_prop( double t0, double range,
 
       // calculate phase shift
       t_phase=exp(-I*2.0*Pi*f_vec[i]*t0); // corresponding to reduced time t0; note f_vec[i+1]
-      // cup=0.0;
-      // for(j=0;j<mode_count[i];j++){
-      //     k_H = re_k[i][j]+I*im_k[i][j];
-      //     pot = exp(I*range*k_H);
-      //     mode_prod = mode_S[i][j]*mode_R[i][j];
-      //     pot = mode_prod*pot;
-      //     pot = pot/sqrt(k_H);
-      //     cup = cup+pot; // modal sum: sum( exp(ikr)/sqrt(k)*Vr*Vs )
-      // }
-      // cup=cup*t_phase;
-      
-      // up to a factor ((delayed Fourier pressure component)*source_spectrum*df) 
-      // (see eq. 5.14 pg 274 and eq. 8.9 pg 480 in Comp. Oc. Acoust. 1994 ed.)
-      //cup=cup*dft_vec[i]*df;
-      // cup=cup*dft_vec[i]; // will multiply by df at the end; note f_vec[i+1]
-
-      // the reduced pressure is defined as: 
-      // (actual pressure)/sqrt(rho(z)): p_reduced(r,z) = p(r,z)/sqrt(rho(z))
-
-      // Note on mode scaling in this code vs. the modes in Computational Oc. Acoust. 1994: 
-      // V_book =  sqrt(rho)*V_in_this_code; 
-      // Thus the formula for the Fourier component of pressure using the modes in this code
-      // is given in DV Modess notes eq. 25 pg. 3 and contains the factor sqrt_rho_ratio
-      // as opposed to the factor 1/rho(z_s) in the book eq. 5.14 pg 274.
       // will multiply by df at the end; note f_vec[i+1]
       arg_vec[i0+i] = t_phase*dft_vec[i]*transfer_function[i]; // note sqrt_rho_ratio
       //arg_vec[i0+i]=sqrt(I/(8.0*Pi*range))*cup;
 
   }
 
-  // smooth_space=(int)floor(0.1*Nfreq); // smoothly zero out on right; as in RW (July 2012)
-
-  // for(i=Nfreq-smooth_space;i<Nfreq;i++){
-  //     //arg_vec[i]=arg_vec[i]*half_hann(n_freqs-smooth_space,n_freqs-df,i); // old code : has df in it
-  //     arg_vec[i]=arg_vec[i]*half_hann(Nfreq-smooth_space,Nfreq-1,i); // changed df to 1 as df doesn't make sense here
-  // }
   for(;i<NFFT;i++) arg_vec[i] = 0.0; // right zero pad
   
   // 
