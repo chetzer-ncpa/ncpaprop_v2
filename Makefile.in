@@ -12,6 +12,8 @@
 # PETSC_INCLUDE_FILE_GENERIC = @PETSC_INCLUDE_FILE_GENERIC@
 # SLEPC_INCLUDE_FILE_GENERIC = @SLEPC_INCLUDE_FILE_GENERIC@
 
+@SET_MAKE@
+
 #package-parts=common atmosphere raytrace modess modbb modess_rd_1wcm pade_pe wmod cmodess cmodbb wnlrt tdpape
 package-parts=common atmosphere libmodes libpe libbroadband modess wmod modbb epade_pe
 
