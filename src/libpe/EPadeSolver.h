@@ -2,6 +2,7 @@
 #define NCPAPROP_EPADE_PE_H_INCLUDED
 
 #include <vector>
+#include <deque>
 
 #include "petscksp.h"
 
@@ -75,6 +76,8 @@ namespace NCPA {
 		int get_starter_self( size_t NZ, double *z, double z_source, int ground_index, 
 			double k0, Mat *qpowers, size_t npade, Vec *psi );
 		int get_starter_user( std::string filename, int NZ, double *z, Vec *psi );
+		int interpolate_starter( std::deque<double> &z_orig, std::deque<double> &r_orig, 
+			std::deque<double> &i_orig, size_t NZ_new, double *z_new, Vec *psi );
 		// int get_starter_self_revised( size_t NZ, double *z, double z_source, double rr, 
 		// 	double z_ground, double k0, Mat *qpowers, size_t npade, Vec *psi );
 
@@ -88,6 +91,9 @@ namespace NCPA {
 			double r, double z_g, bool use_lossless, bool use_top_layer, double freq, bool use_absolute_z,
 			double &k0, double &c0, double *c_vec, double *a_vec, std::complex<double> *k_vec, 
 			std::complex<double> *n_vec );
+
+		double check_ground_height_coincidence_with_grid( double *z, 
+			size_t NZ, double tolerance, double z_ground );
 
 		void set_1d_output( bool tf );
 		void write_broadband_header( std::string filename, double *az_vec, size_t n_az, 

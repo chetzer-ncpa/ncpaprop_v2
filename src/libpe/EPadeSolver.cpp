@@ -739,14 +739,7 @@ int NCPA::EPadeSolver::get_starter_user( std::string filename, int NZ, double *z
 	std::vector< std::string > filelines, fields;
 	std::deque< double > z_file, r_file, i_file;
 	size_t nlines, i;
-	PetscInt ii;
-	double *z_spline, *r_spline, *i_spline;
-	PetscScalar tempval;
 	std::ostringstream oss;
-	PetscScalar J( 0.0, 1.0 );
-	PetscErrorCode ierr;
-	gsl_interp_accel *accel_r_, *accel_i_;
-	gsl_spline *spline_r_, *spline_i_;
 
 	std::getline( in, line );
 
@@ -788,42 +781,61 @@ int NCPA::EPadeSolver::get_starter_user( std::string filename, int NZ, double *z
 		i_file.push_back( this_i );
 	}
 
-	double dz = z_file[ 1 ] - z_file[ 0 ];
-	while (z_file.front() > z[ 0 ]) {
-		z_file.push_front( z_file[ 0 ] - dz );
-		r_file.push_front( 0.0 );
-		i_file.push_front( 0.0 );
+	return interpolate_starter( z_file, r_file, i_file, NZ, z, psi );
+
+}
+
+int NCPA::EPadeSolver::interpolate_starter( 
+			std::deque<double> &z_orig, std::deque<double> &r_orig, 
+			std::deque<double> &i_orig, 
+			size_t NZ_new, double *z_new, Vec *psi ) {
+
+	PetscScalar J( 0.0, 1.0 );
+	PetscErrorCode ierr;
+	gsl_interp_accel *accel_r_, *accel_i_;
+	gsl_spline *spline_r_, *spline_i_;
+	double *z_spline, *r_spline, *i_spline;
+
+	PetscInt ii;
+	PetscScalar tempval;
+	
+
+	double dz = z_orig[ 1 ] - z_orig[ 0 ];
+	while (z_orig.front() > z_new[ 0 ]) {
+		z_orig.push_front( z_orig[ 0 ] - dz );
+		r_orig.push_front( 0.0 );
+		i_orig.push_front( 0.0 );
 	}
-	while (z_file.back() < z[ NZ-1 ]) {
-		z_file.push_back( z_file.back() + dz );
-		r_file.push_back( 0.0 );
-		i_file.push_back( 0.0 );
+	while (z_orig.back() < z_new[ NZ_new-1 ]) {
+		z_orig.push_back( z_orig.back() + dz );
+		r_orig.push_back( 0.0 );
+		i_orig.push_back( 0.0 );
 	}
 
-	z_spline = new double[ z_file.size() ];
-	r_spline = new double[ z_file.size() ];
-	i_spline = new double[ z_file.size() ];
-	for (i = 0; i < z_file.size(); i++) {
-		z_spline[ i ] = z_file[ i ];
-		r_spline[ i ] = r_file[ i ];
-		i_spline[ i ] = i_file[ i ];
+	z_spline = new double[ z_orig.size() ];
+	r_spline = new double[ z_orig.size() ];
+	i_spline = new double[ z_orig.size() ];
+	for (ii = 0; ii < z_orig.size(); ii++) {
+		z_spline[ ii ] = z_orig[ ii ];
+		r_spline[ ii ] = r_orig[ ii ];
+		i_spline[ ii ] = i_orig[ ii ];
 	}
 
 	accel_r_ = gsl_interp_accel_alloc();
-	spline_r_ = gsl_spline_alloc( gsl_interp_cspline, z_file.size() );
-	gsl_spline_init( spline_r_, z_spline, r_spline, z_file.size() );
+	spline_r_ = gsl_spline_alloc( gsl_interp_cspline, z_orig.size() );
+	gsl_spline_init( spline_r_, z_spline, r_spline, z_orig.size() );
 	accel_i_ = gsl_interp_accel_alloc();
-	spline_i_ = gsl_spline_alloc( gsl_interp_cspline, z_file.size() );
-	gsl_spline_init( spline_i_, z_spline, i_spline, z_file.size() );
+	spline_i_ = gsl_spline_alloc( gsl_interp_cspline, z_orig.size() );
+	gsl_spline_init( spline_i_, z_spline, i_spline, z_orig.size() );
 
 	ierr = VecCreate( PETSC_COMM_SELF, psi );CHKERRQ(ierr);
-	ierr = VecSetSizes( *psi, PETSC_DECIDE, NZ );CHKERRQ(ierr);
+	ierr = VecSetSizes( *psi, PETSC_DECIDE, NZ_new );CHKERRQ(ierr);
 	ierr = VecSetFromOptions( *psi ); CHKERRQ(ierr);
 	ierr = VecSet( *psi, 0.0 );
 
-	for (ii = 0; ii < NZ; ii++) {
-		tempval = gsl_spline_eval( spline_r_, z[ ii ], accel_r_ ) 
-				  + J * gsl_spline_eval( spline_i_, z[ ii ], accel_i_ );
+	for (ii = 0; ii < NZ_new; ii++) {
+		tempval = gsl_spline_eval( spline_r_, z_new[ ii ], accel_r_ ) 
+				  + J * gsl_spline_eval( spline_i_, z_new[ ii ], accel_i_ );
 		ierr = VecSetValues( *psi, 1, &ii, &tempval, INSERT_VALUES );CHKERRQ(ierr);
 	}
 	ierr = VecAssemblyBegin( *psi );CHKERRQ(ierr);
@@ -865,7 +877,7 @@ int NCPA::EPadeSolver::build_operator_matrix_without_topography(
 	
 	ierr = MatGetOwnershipRange(*q,&Istart,&Iend);CHKERRQ(ierr);
 	if (Istart==0) FirstBlock=PETSC_TRUE;
-    if (Iend==NZ) LastBlock=PETSC_TRUE;
+    if (Iend==NZvec) LastBlock=PETSC_TRUE;
     value[0]=1.0 / h2 / k02; value[2]=1.0 / h2 / k02;
     for( i=(FirstBlock? Istart+1: Istart); i<(LastBlock? Iend-1: Iend); i++ ) {
     		if (i < boundary_index)  {
@@ -885,7 +897,7 @@ int NCPA::EPadeSolver::build_operator_matrix_without_topography(
 		    ierr = MatSetValues(*q,1,&i,3,col,value,INSERT_VALUES);CHKERRQ(ierr);
     }
     if (LastBlock) {
-		    i=NZ-1; col[0]=NZ-2; col[1]=NZ-1;
+		    i=NZvec-1; col[0]=NZvec-2; col[1]=NZvec-1;
 		    value[ 0 ] = 1.0 / h2 / k02;
 		    value[ 1 ] = -2.0/h2/k02 + (n[i]*n[i] - 1);
 		    ierr = MatSetValues(*q,1,&i,2,col,value,INSERT_VALUES);CHKERRQ(ierr);
@@ -909,13 +921,28 @@ int NCPA::EPadeSolver::build_operator_matrix_without_topography(
     return 1;
 }
 
+double NCPA::EPadeSolver::check_ground_height_coincidence_with_grid( double *z, 
+	size_t NZ, double tolerance, double z_ground ) {
+
+	int closest_source_grid_point = NCPA::find_closest_index( z, NZ, z_ground );
+	if (fabs(z_ground - z[ closest_source_grid_point ]) < tolerance) {
+		if (z_ground - z[ closest_source_grid_point ] <= 0) {
+			return z_ground - tolerance;
+		} else {
+			return z_ground + tolerance;
+		}
+	} else {
+		return z_ground;
+	}
+}
+
 int NCPA::EPadeSolver::solve_with_topography() {
 	int i;
 	std::complex<double> I( 0.0, 1.0 );
 	PetscErrorCode ierr;
 	PetscInt *indices;
 	PetscScalar hank, *contents;
-	Mat B, C, q, q_starter;
+	Mat B, C, q;    // , q_starter;
 	Mat *qpowers = PETSC_NULL, *qpowers_starter = PETSC_NULL;
 	Vec psi_o, Bpsi_o; //, psi_temp;
 	KSP ksp;
@@ -960,6 +987,8 @@ int NCPA::EPadeSolver::solve_with_topography() {
 		z_abs[ i ] = z[ i ];
 		indices[ i ] = i;
 	}
+	double grid_tolerance = dz * 0.05;
+	z_ground = check_ground_height_coincidence_with_grid( z, NZ, grid_tolerance, z_ground );
 	zs = NCPA::max( zs, z_ground );
 
 	// define ground_index, which is J in @notes
@@ -970,7 +999,6 @@ int NCPA::EPadeSolver::solve_with_topography() {
 
 	// adjust source height if it falls within 5% of a ground point
 	int closest_source_grid_point = NCPA::find_closest_index( z, NZ, zs );
-	double grid_tolerance = dz * 0.05;
 	if (fabs(zs - z[ closest_source_grid_point ]) < grid_tolerance) {
 		zs = z[ closest_source_grid_point ] + grid_tolerance;
 		std::cout << "Adjusting source height to " << zs 
@@ -1064,6 +1092,10 @@ int NCPA::EPadeSolver::solve_with_topography() {
 		  		r[ i ] = ((double)(i+1)) * dr;
 		  	}
 
+		  	// Check ground elevation for coincidence with grid points
+		  	z_ground = check_ground_height_coincidence_with_grid( z, NZ, 
+		  		grid_tolerance, atm_profile_2d->get( 0.0, "Z0" ) );
+
 		  	// set up transmission loss matrix
 			tl = NCPA::cmatrix( NZ, NR-1 );
 
@@ -1082,31 +1114,78 @@ int NCPA::EPadeSolver::solve_with_topography() {
 
 			calculate_atmosphere_parameters( atm_profile_2d, NZ, z, 0.0, z_ground, lossless, 
 				top_layer, freq, use_topo, k0, c0, c, a_t, k, n );
-			std::cout << "k0 = " << k0 << std::endl;
-
-			// output c and rho to files for testing
-			std::ofstream cfile("effective_c.dat");
-			std::ofstream rfile("rho.dat");
-			for (int iii = 0; iii < NZ; iii++) {
-				cfile << c[ iii ] << std::endl;
-				if (z[iii] >= 0.0) {
-					rfile << z[iii] << " " << atm_profile_2d->get( 0.0, "RHO", z[iii] ) << std::endl;
-				}
-			}
-			cfile.close();
-			rfile.close();
-
-			// calculate q matrices.  we need to redo this every time we change the atmosphere, but
-			// can keep reusing the precalculated powers until that point
-			// build_operator_matrix_with_topography( atm_profile_2d, NZ, z, 0.0, k, k0, h2, 
-			// 	z_ground, ground_impedence_factor, n, ground_index, PETSC_NULL, &q );
-			// create_polymatrix_vector( npade+1, &q, &qpowers );
-			// ierr = MatDestroy( &q );CHKERRQ(ierr);
-
+			
+			// build appropriate starter
 			if (starter == "self") {
-				// build_operator_matrix_with_topography( atm_profile_2d, NZ, z, 0.0, k, k0, 
-				// 	h2, z_ground, ground_impedence_factor, n, ground_index, PETSC_NULL, 
-				// 	&q_starter, true );
+
+				// for now build the non-topographic starter
+				// revisit when time and funding permit
+				size_t NZ_starter = NZ - ground_index;
+				double *z_starter = new double[ NZ_starter ];
+				std::memset( z_starter, 0, NZ_starter * sizeof(double) );
+
+				std::complex<double> *k_starter = new std::complex<double>[ NZ_starter ];
+				std::memset( k_starter, 0, NZ_starter * sizeof(std::complex<double>) );
+
+				std::complex<double> *n_starter = new std::complex<double>[ NZ_starter ];
+				std::memset( n_starter, 0, NZ_starter * sizeof(std::complex<double>) );
+
+				double *c_starter = new double[ NZ_starter ];
+				std::memset( c_starter, 0, NZ_starter * sizeof(double) );
+
+				double *a_starter = new double[ NZ_starter ];
+				std::memset( a_starter, 0, NZ_starter * sizeof(double) );
+
+				double k0_starter, c0_starter;
+				size_t ii;
+				for (ii = 0; ii < NZ_starter; ii++) {
+					z_starter[ ii ] = z[ ii + ground_index ];
+				}
+
+				// std::memcpy( z_starter, z+ground_index, NZ_starter * sizeof(double) );
+				calculate_atmosphere_parameters( atm_profile_2d, NZ_starter, z_starter,
+					0.0, z_ground, lossless, top_layer, freq, false, k0_starter, 
+					c0_starter, c_starter, a_starter, k_starter, n_starter );
+
+				Mat q_starter = PETSC_NULL;
+				Mat *qpowers_starter = PETSC_NULL;
+				build_operator_matrix_without_topography( NZ_starter, z_starter, 
+					k0_starter, h2, ground_impedence_factor, n_starter, npade+1, 0, 
+					&q_starter );
+				create_polymatrix_vector( npade+1, &q_starter, &qpowers_starter );
+				get_starter_self( NZ_starter, z_starter, zs, 0, k0_starter, 
+					qpowers_starter, npade, &psi_o );
+
+				// now interpolate calculated starter to actual Z vector
+				std::deque< double > z_spline, r_spline, i_spline;
+				PetscScalar *psi_orig = new PetscScalar[ NZ_starter ];
+				std::memset( psi_orig, 0, NZ_starter * sizeof( PetscScalar ) );
+				PetscInt *starter_indices = new PetscInt[ NZ_starter ];
+				for (ii = 0; ii < NZ_starter; ii++) {
+					starter_indices[ ii ] = ii;
+				}
+				ierr = VecGetValues( psi_o, NZ_starter, starter_indices, psi_orig );CHKERRQ(ierr);
+				for (ii = 0; ii < NZ_starter; ii++) {
+					z_spline.push_back( z_starter[ ii ] );
+					r_spline.push_back( psi_orig[ ii ].real() );
+					i_spline.push_back( psi_orig[ ii ].imag() );
+				}
+				ierr = VecDestroy( &psi_o );
+				interpolate_starter( z_spline, r_spline, i_spline, NZ, z, &psi_o );
+
+				// clean up temp variables
+				delete [] z_starter;
+				delete [] k_starter;
+				delete [] n_starter;
+				delete [] c_starter;
+				delete [] a_starter;
+				delete [] starter_indices;
+				delete [] psi_orig;
+				ierr = MatDestroy( &q_starter );CHKERRQ(ierr);
+				delete_polymatrix_vector( npade+1, &qpowers_starter );
+
+
+				// set up for future calculations
 				build_operator_matrix_with_topography( atm_profile_2d, NZ, z, 0.0, k, k0, 
 					h2, z_ground, ground_impedence_factor, n, ground_index, PETSC_NULL, 
 					&q, true );
@@ -1116,8 +1195,7 @@ int NCPA::EPadeSolver::solve_with_topography() {
 				
 				// get_starter_self( NZ, z, zs, ground_index, k0, qpowers_starter, npade, 
 				// 	&psi_o );
-				get_starter_self( NZ, z, zs, ground_index, k0, qpowers, npade, 
-					&psi_o );
+				
 				// ierr = MatDestroy( &q_starter );CHKERRQ(ierr);
 				ierr = MatDestroy( &q );CHKERRQ(ierr);
 			} else if (starter == "gaussian") {
@@ -1162,7 +1240,9 @@ int NCPA::EPadeSolver::solve_with_topography() {
 			for (PetscInt ir = 0; ir < (NR-1); ir++) {
 
 				double rr = r[ ir ];
-				z_ground = atm_profile_2d->get_interpolated_ground_elevation( rr );
+				z_ground = check_ground_height_coincidence_with_grid( z, NZ, 
+		  			grid_tolerance, atm_profile_2d->get_interpolated_ground_elevation( rr ) );
+				// z_ground = atm_profile_2d->get_interpolated_ground_elevation( rr );
 				calculate_atmosphere_parameters( atm_profile_2d, NZ, z, rr, z_ground, lossless, 
 					top_layer, freq, use_topo, k0, c0, c, a_t, k, n );
 				Mat last_q;
@@ -2297,10 +2377,10 @@ int NCPA::EPadeSolver::get_starter_self( size_t NZ, double *z, double zs, int nz
 		taylor_sqrt_1pQ_exp_id_sqrt_1pQ_m1( 2*npade, k0*r_ref );
 	calculate_pade_coefficients( &taylor1, npade, npade+1, &P, &Q );
 
-	std::cout << "k0 = " << k0 << std::endl;
-	printVector( "Taylor Coefficients for Exponential", taylor1 );
-	printVector( "Numerator Pade Coefficients", P );
-	printVector( "Denominator Pade Coefficients", Q );
+	// std::cout << "k0 = " << k0 << std::endl;
+	// printVector( "Taylor Coefficients for Exponential", taylor1 );
+	// printVector( "Numerator Pade Coefficients", P );
+	// printVector( "Denominator Pade Coefficients", Q );
 	generate_polymatrices( qpowers, npade, NZ, P, Q, &B, &C );
 	// epade( npade, k0, r_ref, &P, &Q, true );
 
