@@ -17,7 +17,7 @@ package-parts=common atmosphere libmodes libpe libbroadband modess wmod modbb ep
 
 
 # Build everything
-all: $(package-parts)
+all: clean $(package-parts)
 
 # build general utility libraries
 common:
