@@ -16,6 +16,7 @@
 #define NCPAPROP_EPADE_PE_FILENAME_MULTIPROP "tloss_multiprop.pe"
 #define NCPAPROP_EPADE_PE_FILENAME_BROADBAND "tloss_broadband.bin"
 #define NCPAPROP_EPADE_PE_FILENAME_STARTER "starter.pe"
+#define NCPAPROP_EPADE_PE_FILENAME_TOPOGRAPHY "topography.pe"
 
 namespace NCPA {
 
@@ -101,6 +102,7 @@ namespace NCPA {
 		void write_broadband_results( std::string filename, double this_az, double this_f, 
 			double *r_vec, size_t n_r, double *z_vec, size_t n_z, std::complex< double > **tloss_mat, 
 			unsigned int precision_factor );
+		void write_topography( std::string filename, double az, double r_max, double dr );
 
 		double *z = NULL, *z_abs = NULL, *r = NULL, *f = NULL, calc_az;
 		std::complex< double > **tl;
@@ -113,7 +115,7 @@ namespace NCPA {
 		bool use_atm_1d = false, use_atm_2d = false, use_atm_toy = false, use_topo = false;
 		bool z_ground_specified = false, lossless = false, top_layer = true;
 		bool multiprop = false, write1d = true, write2d = false, calculate_attn = true;
-		bool broadband = false, write_starter = false;
+		bool broadband = false, write_starter = false, write_topo = false;
 		double r_max;    // range limits
 		double z_max, z_min, z_ground, z_bottom;  // atmosphere profile limits
 		double zs, zr;  // source height, receiver height

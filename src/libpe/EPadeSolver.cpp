@@ -137,6 +137,7 @@ NCPA::EPadeSolver::EPadeSolver( NCPA::ParameterSet *param ) {
 	write2d 			= param->wasFound( "write_2d_tloss" );
 	write_starter       = param->wasFound( "write_starter" );
 	multiprop 			= param->wasFound( "multiprop" );
+	write_topo 		 	= param->wasFound( "write_topography" );
 	broadband = false;
 	user_ground_impedence 	= std::complex<double>( 0.0, 0.0 );
 
@@ -970,6 +971,12 @@ int NCPA::EPadeSolver::solve_with_topography() {
 		ofs.close();
 	}
 
+	// truncate topography if necessary
+	if (write_topo) {
+		std::ofstream ofs( NCPAPROP_EPADE_PE_FILENAME_TOPOGRAPHY, std::ofstream::out | std::ofstream::trunc );
+		ofs.close();
+	}
+
 	/* @todo move this into constructor as much as possible */
 	// if (use_topo) {
 	z_bottom = -5000.0;    // make this eventually depend on frequency
@@ -1332,6 +1339,10 @@ int NCPA::EPadeSolver::solve_with_topography() {
 			delete [] r;
 			delete [] zgi_r;
 			NCPA::free_cmatrix( tl, NZ, NR-1 );
+		}
+
+		if (write_topo) {
+			write_topography( NCPAPROP_EPADE_PE_FILENAME_TOPOGRAPHY, calc_az, r_max, 1.0 );
 		}
 		
 		atm_profile_2d->remove_property( "_CEFF_" );
@@ -2955,4 +2966,23 @@ int NCPA::EPadeSolver::zero_below_ground( Mat *q, int NZ, PetscInt ground_index 
 	ierr = MatAssemblyEnd( *q, MAT_FINAL_ASSEMBLY );CHKERRQ(ierr);
 
 	return 1;
+}
+
+void NCPA::EPadeSolver::write_topography( std::string filename, double azimuth, 
+	double r_max, double dr ) {
+
+	double r;
+	std::ofstream outfile( filename, std::ofstream::out | std::ofstream::app );
+	if (!outfile.good()) {
+		throw std::runtime_error( "Error opening file " + filename + " to write topography" );
+	}
+
+	for (r = 0.0; r <= r_max; r += dr) {
+		outfile << azimuth << " " << r << " " 
+				<< atm_profile_2d->get_interpolated_ground_elevation( r ) 
+				<< std::endl;
+	}
+
+	outfile.close();
+
 }

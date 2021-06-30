@@ -169,6 +169,8 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 	ps->addParameterDescription( "Flags", "--write_atm_profile", "Output atmospheric profile to atm_profile.pe" );
 	ps->addParameter( new NCPA::FlagParameter( "write_starter" ) );
 	ps->addParameterDescription( "Flags", "--write_starter", "Output starter to starter.pe" );
+	ps->addParameter( new NCPA::FlagParameter( "write_topography" ) );
+	ps->addParameterDescription( "Flags", "--write_topography", "Output interpolated topography to topography.pe" );
 	ps->addParameter( new NCPA::FlagParameter( "lossless" ) );
 	ps->addParameterDescription( "Flags", "--lossless", "Ignore atmospheric attenuation" );
 	ps->addParameter( new NCPA::FlagParameter( "topo" ) );
@@ -185,6 +187,8 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 	ps->addFooterTextVerbatim("  tloss_multiplot.pe           r (km), az (deg), TL (real), TL (imag)");
 	ps->addFooterTextVerbatim("  tloss_2d.pe:                 r, z, TL (real), TL (imag)");
 	ps->addFooterTextVerbatim("  atm_profile.pe:              z,u,v,w,t,d,p,c,c_eff");
+	ps->addFooterTextVerbatim("  starter.pe:                  z, starter (real), starter(imag)" );
+	ps->addFooterTextVerbatim("  topography.pe:               az, r, z0" );
 	ps->addBlankFooterLine();
 	ps->addFooterText("Examples (run from 'samples' directory):");
 	ps->setFooterIndent( 4 );
