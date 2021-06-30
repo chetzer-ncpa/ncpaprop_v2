@@ -427,8 +427,10 @@ void NCPA::Atmosphere2D::generate_ground_elevation_spline_() {
 		topo_ground_heights_[ pnum ] = (*it)->get( "Z0" );
 		topo_ranges_[ pnum++ ] = (*it)->get( "_RANGE_" );
 	}
-	topo_ground_heights_[ np+1 ] = topo_ground_heights_[ np ];
-	topo_ranges_[ np+1 ] = 1.1 * max_valid_range_;
+	// topo_ground_heights_[ np+1 ] = topo_ground_heights_[ np ];
+	// topo_ranges_[ np+1 ] = 1.1 * max_valid_range_;
+	topo_ground_heights_[ pnum ] = topo_ground_heights_[ pnum-1 ];
+	topo_ranges_[ pnum ] = 1.1 * max_valid_range_;
 
 	gsl_spline_init( topo_spline_, topo_ranges_, topo_ground_heights_, np+2 );
 
