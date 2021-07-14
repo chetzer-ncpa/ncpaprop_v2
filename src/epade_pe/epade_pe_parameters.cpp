@@ -156,6 +156,8 @@ void NCPA::configure_epade_pe_parameter_set( NCPA::ParameterSet *ps ) {
 	ps->addParameterDescription( "Optional Parameters [default]", "--ground_impedence_real", "Real part of ground impedence [rigid ground]" );
 	ps->addParameter( new NCPA::FloatParameter( "ground_impedence_imag", 0.0 ) );
 	ps->addParameterDescription( "Optional Parameters [default]", "--ground_impedence_imag", "Imaginary part of ground impedence [rigid ground]" );
+	ps->addParameter( new NCPA::StringParameter( "topofile", "" ) );
+	ps->addParameterDescription( "Optional Parameters [default]", "--topofile", "File name containing topography [n/a]. Columns are #n# Range(km) Elevation(m)" );
 	ps->addParameter( new NCPA::StringParameter( "starterfile", "" ) );
 	ps->addParameterDescription( "Optional Parameters [default]", "--starterfile", "File name containing starter [n/a]. Columns are #n# Height(km) RealPart ImaginaryPart" );
 	ps->addParameter( new NCPA::StringParameter( "attnfile", "" ) );

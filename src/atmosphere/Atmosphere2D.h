@@ -78,7 +78,7 @@ namespace NCPA {
 		void convert_altitude_units( units_t new_units );
 		void convert_property_units( std::string key, units_t new_units );
 		void read_attenuation_from_file( std::string new_key, std::string filename );    // apply universally
-		
+		void read_elevation_from_file( std::string filename );
 
 		
 		std::vector< NCPA::Atmosphere1D * >::iterator first_profile();
@@ -89,7 +89,8 @@ namespace NCPA {
 		void calculate_midpoints_();
 		void generate_ground_elevation_spline_();
 		void free_ground_elevation_spline_();
-		
+		void setup_ground_elevation_spline_from_profiles_();
+		void setup_ground_elevation_spline_from_file_();
 
 		// data storage
 		std::vector< Atmosphere1D * > profiles_;
@@ -106,6 +107,8 @@ namespace NCPA {
 		double *topo_ranges_;
 		gsl_interp_accel *topo_accel_;
 		gsl_spline *topo_spline_;
+		bool override_profile_z0_ = false;
+		std::string ground_elevation_file_;
 
 		double max_valid_range_;
 

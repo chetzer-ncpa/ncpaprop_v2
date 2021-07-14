@@ -127,6 +127,7 @@ namespace NCPA {
 		std::string starter;
 		std::string attnfile;
 		std::string user_starter_file;
+		std::string topofile;
 
 		std::vector< double > zt;
 		std::vector< int > zti;

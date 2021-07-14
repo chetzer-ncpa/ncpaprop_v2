@@ -407,11 +407,103 @@ std::vector< NCPA::Atmosphere1D * >::iterator NCPA::Atmosphere2D::last_profile()
 	return profiles_.end();
 }
 
+void NCPA::Atmosphere2D::read_elevation_from_file( std::string filename ) {
+	override_profile_z0_ = true;
+	ground_elevation_file_ = filename;
+	generate_ground_elevation_spline_();
+}
+
 void NCPA::Atmosphere2D::generate_ground_elevation_spline_() {
 
 	free_ground_elevation_spline_();
 
 	topo_accel_ = gsl_interp_accel_alloc();
+	if (override_profile_z0_) {
+		setup_ground_elevation_spline_from_file_();
+	} else {
+		setup_ground_elevation_spline_from_profiles_();
+	}
+}
+
+void NCPA::Atmosphere2D::setup_ground_elevation_spline_from_file_() {
+
+	std::ifstream topofile( ground_elevation_file_ );
+	units_t z_units = get_altitude_units( 0.0 );
+	units_t r_units = range_units_;
+	units_t file_r_units = NCPA::Units::fromString( "km" );
+	units_t file_z_units = NCPA::Units::fromString( "m" );
+	std::string line;
+	std::string delims = ":,=";
+	std::vector< double > rvec, zvec;
+
+	std::getline( topofile, line );
+	while( topofile.good() ) {
+		line = NCPA::deblank( line );
+		if (line[ 0 ] == '#') {
+			if (line.size() > 1 && line[ 1 ] == '%') {
+				size_t delimpos = line.find_last_of( delims );
+				if (delimpos == std::string::npos) {
+					std::cerr << "Topographic file descriptive header line "
+							  << line << " has no delimiter characters ("
+							  << delims << "), ignoring" << std::endl;
+				} else {
+					// chop off first two characters
+					line.erase(0,2);
+					line = NCPA::deblank( line );
+					delimpos = line.find_last_of( delims );
+					std::string ustr = NCPA::deblank(line.substr( delimpos ));
+					units_t tempunits = NCPA::Units::fromString( ustr );
+					if (tempunits == UNITS_NONE) {
+						std::cerr << "Unrecognized units " << ustr << ", ignoring"
+								  << std::endl;
+					} else {
+						switch (line[0]) {
+							case 'r':
+							case 'R':
+								file_r_units = tempunits;
+								break;
+							case 'z':
+							case 'Z':
+								file_z_units = tempunits;
+								break;
+							default:
+								std::cerr << "Unrecognized parameter tag " << line[0]
+										  << ", must be in [RrZz].  Ignoring" << std::endl;
+						}
+					}
+				}
+			}
+		} else {
+			std::vector< std::string > parts = NCPA::split( line );
+			double r = std::stod( parts[ 0 ] );
+			double z = std::stod( parts[ 1 ] );
+			rvec.push_back( NCPA::Units::convert( r, file_r_units, r_units ) );
+			zvec.push_back( NCPA::Units::convert( z, file_z_units, z_units ) );
+		}
+	}
+	topofile.close();
+
+	// Now create the splines
+	size_t np = rvec.size();
+	topo_spline_ = gsl_spline_alloc( gsl_interp_cspline, np + 2 );
+	topo_ground_heights_ = new double[ np + 2 ];
+	topo_ranges_ = new double[ np + 2 ];
+	std::memset( topo_ground_heights_, 0, (np + 2) * sizeof(double) );
+	std::memset( topo_ranges_, 0, (np + 2) * sizeof(double) );
+
+	topo_ground_heights_[ 0 ] = rvec.front();
+	topo_ranges_[ 0 ] = -1000.0;
+	for (size_t i = 0; i < np; i++) {
+		topo_ground_heights_[ i+1 ] = zvec[ i ];
+		topo_ranges_[ i+1 ] = rvec[ i ];
+	}
+	topo_ground_heights_[ np+1 ] = topo_ground_heights_[ np ];
+	topo_ranges_[ np+1 ] = topo_ranges_[ np ];
+
+	gsl_spline_init( topo_spline_, topo_ranges_, topo_ground_heights_, np+2 ); 
+}
+
+void NCPA::Atmosphere2D::setup_ground_elevation_spline_from_profiles_() {
 	size_t np = profiles_.size();
 	topo_spline_ = gsl_spline_alloc( gsl_interp_cspline, np + 2 );
 	topo_ground_heights_ = new double[ np + 2 ];
@@ -421,10 +513,14 @@ void NCPA::Atmosphere2D::generate_ground_elevation_spline_() {
 
 	std::vector< NCPA::Atmosphere1D * >::iterator it = this->first_profile();
 	topo_ground_heights_[ 0 ] = (*it)->get( "Z0" );
-	topo_ranges_[ 0 ] = -1000.0;
+	topo_ranges_[ 0 ] = NCPA::Units::convert( -1000.0, UNITS_DISTANCE_METERS, range_units_ );
 	size_t pnum = 1;
 	for ( ; it != this->last_profile(); ++it ) {
-		topo_ground_heights_[ pnum ] = (*it)->get( "Z0" );
+		if ((*it)->contains_scalar("Z0")) {
+			topo_ground_heights_[ pnum ] = (*it)->get( "Z0" );
+		} else {
+			topo_ground_heights_[ pnum ] = 0.0;
+		}
 		topo_ranges_[ pnum++ ] = (*it)->get( "_RANGE_" );
 	}
 	// topo_ground_heights_[ np+1 ] = topo_ground_heights_[ np ];
@@ -433,7 +529,6 @@ void NCPA::Atmosphere2D::generate_ground_elevation_spline_() {
 	topo_ranges_[ pnum ] = 1.1 * max_valid_range_;
 
 	gsl_spline_init( topo_spline_, topo_ranges_, topo_ground_heights_, np+2 );
-
 }
 
 void NCPA::Atmosphere2D::free_ground_elevation_spline_() {
